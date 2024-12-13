@@ -7,8 +7,8 @@
 1) Create a virtual environment.
 
 ```
-conda create -n taiji_env python=3.12
-conda activate taiji_env
+conda create -n tri_env python=3.12
+conda activate tri_env
 ```
 2) Install the required packages.
 
