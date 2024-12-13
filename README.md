@@ -1,7 +1,17 @@
 # Triangle-Simulator
-pre-requisites: 
-numpy               1.26.4
-scipy               1.13.1
-matplotlib          3.9.3
-healpy              1.17.3
-PyCBC               2.7.2
+
+## Getting Started
+
+0) [Install Anaconda](https://docs.anaconda.com/anaconda/install/) if you do not have it.
+
+1) Create a virtual environment.
+
+```
+conda create -n taiji_env python=3.12
+conda activate taiji_env
+```
+2) Install the required packages.
+
+```
+pip install -r requirements.txt
+```
