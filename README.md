@@ -7,7 +7,7 @@
 1) Create a virtual environment.
 
 ```
-conda create -n tri_env python=3.12
+conda create -n tri_env python=3.9
 conda activate tri_env
 ```
 2) Install the required packages.
