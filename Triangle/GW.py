@@ -239,8 +239,8 @@ class MBHB():
             print('length of data:', len(t_data), len(hSp_data))
         
         # get interpolation functions
-        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=3, ext='zeros')
-        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=3, ext='zeros')
+        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=5, ext='zeros')
+        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=5, ext='zeros')
     
     
 
