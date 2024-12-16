@@ -4,3 +4,9 @@ matplotlib
 healpy==1.17.3
 PyCBC==2.7.2
 jupyter
+# format
+black
+flake8
+isort
+pre-commit
+blacken-docs

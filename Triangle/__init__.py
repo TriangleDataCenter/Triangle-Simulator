@@ -1,7 +1,7 @@
 # Triangle/__init__.py
 
-import pkgutil
 import importlib
+import pkgutil
 
 __all__ = []
 

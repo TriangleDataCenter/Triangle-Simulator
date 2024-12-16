@@ -4,6 +4,8 @@
 
 
 core
+# Pre-commit
+.pre-commit/
 
 ### OSX ###
 # General
