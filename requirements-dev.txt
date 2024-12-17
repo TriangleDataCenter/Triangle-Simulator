@@ -1,0 +1,12 @@
+numpy==1.26.4
+scipy==1.13.1
+matplotlib
+healpy==1.17.3
+PyCBC==2.7.2
+jupyter
+# format
+black
+flake8
+isort
+pre-commit
+blacken-docs
