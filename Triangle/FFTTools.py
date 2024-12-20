@@ -22,10 +22,7 @@ def FFT_window(data_array, fsample, window_type=None, window_args_dict=window_di
     if window_type is None:
         fft_array = rfft(data_array)[1:n_f] / fsample
     else:
-        if window_type == "tukey":
-            window = windows.tukey
-            scale_factor = 1.110  # NOTE: not suitable for all the values of alpha
-        elif window_type == "kaiser":
+        if window_type == "kaiser":
             window = windows.kaiser
             scale_factor = 2.480
         elif window_type == "hann":

@@ -23,8 +23,8 @@ class Interferometers:
         size (int): Size of the data. Default is 40000.
         t0 (float): Start time of the simulation. Default is 0.
         time_frame (str): Time frame for the simulation, either 'ProperTime' or 'ClockTime'. Default is 'ProperTime'.
-        garbage_time1 (float): Initial garbage time. Default is 100.
-        garbage_time2 (float): Final garbage time. Default is 100.
+        garbage_time1 (float): Initial garbage time. Default is 0.
+        garbage_time2 (float): Final garbage time. Default is 0.
         telemetry_downsample (int or None): Downsampling factor for telemetry. Default is None.
         aafilter_coef (list): Anti-aliasing filter coefficients for downsampling. Default is [240, 1.1, 2.9].
         detrend_order (int or None): Order of the detrending polynomial. Default is None.
@@ -56,8 +56,8 @@ class Interferometers:
         # the start time of simulation
         t0=0,
         time_frame="ProperTime",
-        garbage_time1=100.0,
-        garbage_time2=100.0,
+        garbage_time1=0.,
+        garbage_time2=0.,
         telemetry_downsample=None,
         aafilter_coef=[240, 1.1, 2.9],  # downsampling filter used for 16Hz -> 4Hz
         detrend_order=None,
