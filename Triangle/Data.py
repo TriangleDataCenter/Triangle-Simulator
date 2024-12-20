@@ -765,9 +765,8 @@ def lagrange_timeshift(data, shifts, order=31):
 
 def timeshift(data, shifts, order=31):
     """
-    Another implementation of the lagrange interpolation by Jean-Baptiste Bayle, turned out to be much faster than the others.
+    Another implementation of the lagrange interpolation (by Jean-Baptiste Bayle, Refs: PhysRevD.107.083019, LISAInstrument), turned out to be the fastest.
     The correctness has been confirmed by comparing with the original one.
-    Refs: PhysRevD.107.083019, LISAInstrument.
     Args:
         data: input array
         shifts: array of time shifts [samples]
