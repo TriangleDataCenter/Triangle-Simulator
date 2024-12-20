@@ -81,10 +81,10 @@ def SSBTimetoDetectorTime(time_ssb, orbit, longitude, latitude):
 
 
 class GW:
-    def __init__(self, orbit, ext_params, t0=0, GWDir=None, GWfunc=None):
+    def __init__(self, orbit, ext_params, t0=0, GWDir=None, GWwaveform=None):
         """
         Args:
-            GW can be initialized by either waveform data stored in a directory GWDir, or a GWfunc object, which has at least two functions hpfunc and hcfunc, representing hp^SSB and hc^SSB.
+            GW can be initialized by either waveform data stored in a directory GWDir, or a GWwaveform object, which has at least two functions hpfunc and hcfunc, representing hp^SSB and hc^SSB.
             ext_params = [longitude, latitude, polarization]
         """
         if GWDir is not None:
@@ -94,9 +94,9 @@ class GW:
             self.hcdata = GWdata[:, 2]
             self.hpfunc = InterpolatedUnivariateSpline(self.tdata, self.hpdata, k=5, ext="zeros")
             self.hcfunc = InterpolatedUnivariateSpline(self.tdata, self.hcdata, k=5, ext="zeros")
-        elif GWfunc is not None:
-            self.hpfunc = GWfunc.hpfunc
-            self.hcfunc = GWfunc.hcfunc
+        elif GWwaveform is not None:
+            self.hpfunc = GWwaveform.hpfunc
+            self.hcfunc = GWwaveform.hcfunc
 
         self.orbit = orbit
         self.ext_params = ext_params
@@ -224,7 +224,7 @@ class MBHB:
             D in [Mpc]
             dt is the sampling time in [s]
             f_lower is the lowest frequency of waveform
-            mass_scale is used to avoid the error of PyCBC caused by too large masses
+            mass_scale is used to avoid the error of PyCBC caused by too large masses (doesn't always work though)
         """
         # For some values of the masses PyCBC might returns error, thus we use the rescaling rule to avoid this error.
         # For PhenomD waveform, the validity of this method is tested using another frequency-domain code.
@@ -240,8 +240,7 @@ class MBHB:
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            if "D" in self.approx_method:
-                m_max = 2
+            m_max = 2
 
         # set f_lower
         Tobs = tc / YEAR
