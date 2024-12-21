@@ -22,23 +22,23 @@ SACC_nominal = 3e-15  # [m/s2], nominal amplitude of the test-mass acceleration 
 SOMS_nominal = 8e-12  # [m], nominal amplitude of the optical metrology noise
 
 # [RO] readout noise amplitudes of different interferometers
-# SRO_SCI_C_nominal = 6.35e-12 # [m], sci_c readout noise
-# SRO_SCI_SB_nominal = 12.5e-12 # [m], sci_sb readout noise
-# SRO_TM_C_nominal = 1.42e-12 # [m], tm_c readout noise
-# SRO_REF_C_nominal = 3.32e-12 # [m], ref_c readout noise
-# SRO_REF_SB_nominal = 7.9e-12 # [m], ref_sb readout noise
+# SRO_SCI_C_nominal = 4.06e-12 # [m], sci_c readout noise
+# SRO_SCI_SB_nominal = 8.00e-12 # [m], sci_sb readout noise
+# SRO_TM_C_nominal = 0.91e-12 # [m], tm_c readout noise
+# SRO_REF_C_nominal = 2.12e-12 # [m], ref_c readout noise
+# SRO_REF_SB_nominal = 5.06e-12 # [m], ref_sb readout noise
 
 # [RO] readout noise grounded in 1 term, i.e. the readout noise of science interferometer, and others are all set to 0
 SRO_SCI_C_nominal = SOMS_nominal  # [m], sci_c readout noise
-SRO_SCI_SB_nominal = 12.5e-12  # [m], sci_sb readout noise
+SRO_SCI_SB_nominal = 8.00e-12  # [m], sci_sb readout noise
 SRO_TM_C_nominal = 0  # [m], tm_c readout noise
 SRO_REF_C_nominal = 0  # [m], ref_c readout noise
 SRO_REF_SB_nominal = 0  # [m], ref_sb readout noise
 
 # [OP] optical path noises for different paths
-# SOP_TM_LOCAL_nominal = 4.24e-12 # [m]
-# SOP_REF_LOCAL_nominal = 2e-12 # [m]
-# SOP_OTHER_nominal = 1e-15 # [m]
+# SOP_TM_LOCAL_nominal = 2.71e-12 # [m]
+# SOP_REF_LOCAL_nominal = 1.28e-12 # [m]
+# SOP_OTHER_nominal = 0.64e-15 # [m]
 
 # [OP] optical path noises = 0, i.e. only create the interface for optical path noises
 SOP_TM_LOCAL_nominal = 0  # [m]
