@@ -450,7 +450,7 @@ class TDI:
         self,
         channel="X2",
         doppler=True,
-        modulation_correction=True,
+        modulation_correction=False,
         channel_name="tdi_channel",
     ):
         """
