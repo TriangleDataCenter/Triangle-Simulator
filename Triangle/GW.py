@@ -229,7 +229,7 @@ class MBHB:
         # For some values of the masses PyCBC might returns error, thus we use the rescaling rule to avoid this error.
         # For PhenomD waveform, the validity of this method is tested using another frequency-domain code.
         if mass_scale is None:
-            mass_scale = max(Mc / 5e5, 1.0)
+            mass_scale = max(Mc / 50, 1.0)
 
         # get rescaled masses
         m1 = m1_Mc_q(Mc, q) / mass_scale

@@ -181,7 +181,12 @@ class TDI:
         self.measurements = measurements.copy()
         self.delays = delays.copy()
         self.fsample = fsample
-        self.size = len(measurements["sci_c"]["12"])
+        if "sci_c" in self.measurements.keys():
+            self.size = len(measurements['sci_c']['12'])
+        elif "eta" in self.measurements.keys():
+            self.size = len(measurements["eta"]["12"])
+        else: 
+            raise ValueError("can not decide data size.")
         self.order = order
         self.delay_order = delay_order
         if "dpl" not in self.measurements.keys():

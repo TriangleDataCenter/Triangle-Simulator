@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse
 from scipy.integrate import cumulative_trapezoid
 from scipy.signal import firwin, kaiserord, lfilter
+import h5py
 
 from Triangle.Constants import *
 from Triangle.Noise import *
@@ -853,3 +854,33 @@ def lagrange_taps(shift_fracs, halfp):
         taps[halfp] = shift_fracs
 
     return taps.T
+
+
+def store_dict_to_h5(h5parent, dictitem):
+    for k, v in dictitem.items(): 
+        if isinstance(v, dict): 
+            group = h5parent.create_group(k)
+            store_dict_to_h5(group, v)
+        else: 
+            if isinstance(v, (str, int, float)): 
+                v = np.array([v], dtype=h5py.special_dtype(vlen=str) if isinstance(v, str) else type(v))
+            else: 
+                v = np.array(v)
+            h5parent.create_dataset(k, data=v)
+
+
+def read_dict_from_h5(h5parent): 
+    result = {} 
+    for k, v in h5parent.items(): 
+        if isinstance(v, h5py.Group):
+            result[k] = read_dict_from_h5(v)
+        else: 
+            data = v[...]
+            if len(data) == 1: 
+                if data.dtype.kind == "U":
+                    result[k] = data[0].decode('utf-8')
+                else: 
+                    result[k] = data[0]
+            else: 
+                result[k] = data 
+    return result 
