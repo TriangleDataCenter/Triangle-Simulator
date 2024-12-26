@@ -1,5 +1,10 @@
 import logging
 
+# to mute the warnings of lal
+import warnings
+warnings.filterwarnings("ignore", "Wswiglal-redir-stdio")
+import lal
+
 import numpy as np
 import pycbc.waveform as wf
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d

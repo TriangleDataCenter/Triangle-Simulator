@@ -1,5 +1,10 @@
 import logging
 
+# to mute the warnings of lal
+import warnings
+warnings.filterwarnings("ignore", "Wswiglal-redir-stdio")
+import lal
+
 import matplotlib.pyplot as plt
 import numpy as np
 
