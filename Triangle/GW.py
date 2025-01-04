@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore", "Wswiglal-redir-stdio")
 import lal
 
 import numpy as np
+from tqdm import tqdm 
 import pycbc.waveform as wf
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 
@@ -245,7 +246,10 @@ class MBHB:
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            m_max = 2
+            if "HM" in self.approx_method:
+                m_max = 4
+            else:
+                m_max = 2
 
         # set f_lower
         Tobs = tc / YEAR
@@ -285,3 +289,110 @@ class MBHB:
         # get interpolation functions
         self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=5, ext="zeros")
         self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=5, ext="zeros")
+        
+
+class GeneralWaveform():
+    def __init__(self, tdata, hpdata, hcdata, t0=0):
+        tdata_int = tdata - tdata[0] + t0 # shift the starting time to t0 
+        self.hpfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hpdata, k=5, ext='zeros')
+        self.hcfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hcdata, k=5, ext='zeros')
+        
+        
+def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approximant=None, data=None):
+    """ 
+    Args: 
+        parameters: a dictionary storing the parameters of signal. Each item can be either a floart number or a numpy array. 
+        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in second), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization'
+        2) for GB, the keys are 'A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi'
+        3) for general GW, the keys are "longitude", "latitude", "polarization" (only extrinsic parameters)
+        orbit should be an "Orbit" object. 
+        approximant is only required for MBHB. 
+        data is only required for general, data = [[tdata, hpdata, hcdata], [tdata, hpdata, hcdata], ], tdata in second unit.
+
+    Returns : 
+        a list of GW objects, which can be used to initialize Interferometer(). 
+    """
+    if signal_type == "MBHB": 
+        param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'polarization']
+        params = dict()
+        for key in param_names: 
+            params[key] = np.atleast_1d(parameters[key])
+        N_source = len(params["chirp_mass"])
+        if approximant == None:
+            approx = "IMRPhenomD"
+        else: 
+            approx = approximant 
+
+        print("initializing responses.")
+        response_list = [] 
+        for i in tqdm(range(N_source)):
+            Mc_i = params["chirp_mass"][i]
+            mbhb_i = MBHB(approx_method=approx, buffer=True)
+            # the choices of sampling rate is conservative.
+            if Mc_i <= 1e5: 
+                dt_i = 1. 
+            elif Mc_i <= 1e6:
+                dt_i = 5.
+            elif Mc_i <= 1e7:
+                dt_i = 15. 
+            else: 
+                dt_i = 30.
+            mbhb_i(
+                Mc=Mc_i, 
+                q=params["mass_ratio"][i], 
+                spin1z=params["spin_1z"][i], 
+                spin2z=params["spin_2z"][i], 
+                tc=params["coalescence_time"][i], 
+                phic=params["coalescence_phase"][i], 
+                D=params["luminosity_distance"][i], 
+                inc=params["inclination"][i], 
+                dt=dt_i, 
+                mass_scale=max(Mc_i / 50., 1.)
+                )
+            GW_i = GW(GWwaveform=mbhb_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["polarization"][i]])
+            response_list.append(GW_i)
+        print("responses initialized.")
+
+    elif signal_type == "GB": 
+        param_names = ['A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi']
+        params = dict() 
+        for key in param_names: 
+            params[key] = np.atleast_1d(parameters[key])
+        N_source = len(params['A'])
+
+        print("initializing responses.")
+        response_list = [] 
+        for i in tqdm(range(N_source)):
+            gb_i = GB(
+                A=params["A"][i], 
+                f=params["f0"][i], 
+                fdot=params["fdot0"][i], 
+                iota=params["inclination"][i], 
+                phi0=params["phase0"][i] 
+            )
+            GW_i = GW(GWwaveform=gb_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["psi"][i]])
+            response_list.append(GW_i)
+        print("responses initialized.")
+
+    elif signal_type == "general":
+        param_names = ["longitude", "latitude", "polarization"]
+        params = dict() 
+        for key in param_names: 
+            params[key] = np.atleast_1d(parameters[key])
+        N_source = len(params['longitude'])
+        N_source1 = len(data)
+        if N_source != N_source1:
+            raise ValueError("numbers of sources mismatch.")
+
+        print("initializing responses.")
+        response_list = [] 
+        for i in tqdm(range(N_source)):
+            general_i = GeneralWaveform(tdata=data[i][0], hpdata=data[i][1], hcdata=data[i][2])
+            GW_i = GW(GWwaveform=general_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["polarization"][i]])
+            response_list.append(GW_i)
+        print("responses initialized.")
+
+    else:
+        raise NotImplementedError("type of source not implemented.")        
+
+    return response_list
