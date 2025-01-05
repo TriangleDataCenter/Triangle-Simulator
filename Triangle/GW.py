@@ -302,14 +302,14 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
     """ 
     Args: 
         parameters: a dictionary storing the parameters of signal. Each item can be either a floart number or a numpy array. 
-        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in second), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization'
+        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in day), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization'
         2) for GB, the keys are 'A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi'
         3) for general GW, the keys are "longitude", "latitude", "polarization" (only extrinsic parameters)
         orbit should be an "Orbit" object. 
         approximant is only required for MBHB. 
         data is only required for general, data = [[tdata, hpdata, hcdata], [tdata, hpdata, hcdata], ], tdata in second unit.
 
-    Returns : 
+    Returns: 
         a list of GW objects, which can be used to initialize Interferometer(). 
     """
     if signal_type == "MBHB": 
@@ -342,7 +342,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
                 q=params["mass_ratio"][i], 
                 spin1z=params["spin_1z"][i], 
                 spin2z=params["spin_2z"][i], 
-                tc=params["coalescence_time"][i], 
+                tc=params["coalescence_time"][i] * DAY, # convert the unit from day to second
                 phic=params["coalescence_phase"][i], 
                 D=params["luminosity_distance"][i], 
                 inc=params["inclination"][i], 
