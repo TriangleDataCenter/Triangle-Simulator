@@ -793,7 +793,7 @@ def RangingProcessing(m, modulation_correction=True, doppler=True, order=31, dro
     # mpr and dpl will be used to calculate delays in tdi
     for key in [
         "mpr",
-        "ppr",
+        # "ppr",
         "dpl",
         "sci_c",
         "sci_sb",
