@@ -263,7 +263,8 @@ class MBHB:
             print("minimum frequency:", f_lower)
 
         # calculate waveform
-        hp, hc = wf.get_td_waveform_from_fd(
+        # hp, hc = wf.get_td_waveform_from_fd(
+        hp, hc = wf.get_td_waveform(
             approximant=self.approx_method,
             mass1=m1,
             mass2=m2,
@@ -301,16 +302,16 @@ class GeneralWaveform():
 def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approximant=None, data=None):
     """ 
     Args: 
-        parameters: a dictionary storing the parameters of signal. Each item can be either a floart number or a numpy array. 
-        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in day), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization'
-        2) for GB, the keys are 'A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi'
-        3) for general GW, the keys are "longitude", "latitude", "polarization" (only extrinsic parameters)
+        parameters: a dictionary storing the parameters of signal. Each item can be either a float number or a numpy array. 
+        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in day), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization';
+        2) for GB, the keys are 'A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi';
+        3) for general GW, the keys are "longitude", "latitude", "polarization" (only extrinsic parameters);
         orbit should be an "Orbit" object. 
         approximant is only required for MBHB. 
         data is only required for general, data = [[tdata, hpdata, hcdata], [tdata, hpdata, hcdata], ], tdata in second unit.
 
     Returns: 
-        a list of GW objects, which can be used to initialize Interferometer(). 
+        a list of GW objects, which can be passed to Interferometer(). 
     """
     if signal_type == "MBHB": 
         param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'polarization']
