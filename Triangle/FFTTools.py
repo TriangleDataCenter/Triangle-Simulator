@@ -34,6 +34,9 @@ def FFT_window(data_array, fsample, window_type=None, window_args_dict=window_di
         elif window_type == "blackman":
             window = windows.blackman
             scale_factor = 2.381
+        elif window_type == "tukey": 
+            window = windows.tukey
+            scale_factor = 1. # the window factor should be adaptive for given alpha value 
         else:
             raise ValueError("Unsupported window type.")
 
