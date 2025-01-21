@@ -17,11 +17,11 @@ from Triangle.Orbit import *
 import numpy as np
 try:  
     import cupy as xp 
-    print("Has Cupy") 
+    # print("Has Cupy") 
     HAS_GPU = True 
 except ImportError:  
     import numpy as xp 
-    print("No Cupy")
+    # print("No Cupy")
     HAS_GPU = False 
 
 logger = logging.getLogger(__name__)
@@ -227,9 +227,8 @@ class MBHB:
         phic,
         D,
         inc,
-        dt=10.0,
+        dt=None,
         f_lower=None,
-        mass_scale=None,
     ):
         """
         Args:
@@ -237,14 +236,12 @@ class MBHB:
             q, spin1z, spin2z are dimensionless
             tc in [s]
             D in [Mpc]
-            dt is the sampling time in [s]
-            f_lower is the lowest frequency of waveform
-            mass_scale is used to avoid the error of PyCBC caused by too large masses (doesn't always work though)
+            dt is the sampling cadance of waveform in [s]
+            f_lower is the lowest frequency of waveform in [Hz]
         """
         # For some values of the masses PyCBC might returns error, thus we use the rescaling rule to avoid this error.
         # For PhenomD waveform, the validity of this method is tested using another frequency-domain code.
-        if mass_scale is None:
-            mass_scale = max(Mc / 50, 1.0)
+        mass_scale = max(Mc / 50, 1.0)
 
         # get rescaled masses
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -270,6 +267,17 @@ class MBHB:
         f_lower *= mass_scale  # get rescaled lower frequency
         if self.verbose > 0:
             print("minimum frequency:", f_lower)
+            
+        # conservative choice for the sampling cadance 
+        if dt is None:
+            if Mc <= 1e5:
+                dt = 0.5
+            elif Mc <= 1e6:
+                dt = 5.
+            elif Mc <= 1e7: 
+                dt = 50.
+            else: 
+                dt = 100.
 
         # calculate waveform
         # hp, hc = wf.get_td_waveform_from_fd(
@@ -312,9 +320,9 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
     """ 
     Args: 
         parameters: a dictionary storing the parameters of signal. Each item can be either a float number or a numpy array. 
-        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in day), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'polarization';
+        1) For MBHB, the keys are 'chirp_mass' (in solar mass), 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time' (in day), 'coalescence_phase', 'luminosity_distance' (in MPC), 'inclination', 'longitude', 'latitude', 'psi';
         2) for GB, the keys are 'A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi';
-        3) for general GW, the keys are "longitude", "latitude", "polarization" (only extrinsic parameters);
+        3) for general GW, the keys are "longitude", "latitude", "psi" (only extrinsic parameters);
         orbit should be an "Orbit" object. 
         approximant is only required for MBHB. 
         data is only required for general, data = [[tdata, hpdata, hcdata], [tdata, hpdata, hcdata], ], tdata in second unit.
@@ -323,7 +331,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         a list of GW objects, which can be passed to Interferometer(). 
     """
     if signal_type == "MBHB": 
-        param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'polarization']
+        param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi']
         params = dict()
         for key in param_names: 
             params[key] = np.atleast_1d(parameters[key])
@@ -338,15 +346,6 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         for i in tqdm(range(N_source)):
             Mc_i = params["chirp_mass"][i]
             mbhb_i = MBHB(approx_method=approx, buffer=True)
-            # the choices of sampling rate is conservative.
-            if Mc_i <= 1e5: 
-                dt_i = 1. 
-            elif Mc_i <= 1e6:
-                dt_i = 5.
-            elif Mc_i <= 1e7:
-                dt_i = 15. 
-            else: 
-                dt_i = 30.
             mbhb_i(
                 Mc=Mc_i, 
                 q=params["mass_ratio"][i], 
@@ -356,10 +355,8 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
                 phic=params["coalescence_phase"][i], 
                 D=params["luminosity_distance"][i], 
                 inc=params["inclination"][i], 
-                dt=dt_i, 
-                mass_scale=max(Mc_i / 50., 1.)
                 )
-            GW_i = GW(GWwaveform=mbhb_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["polarization"][i]])
+            GW_i = GW(GWwaveform=mbhb_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["psi"][i]])
             response_list.append(GW_i)
         print("responses initialized.")
 
@@ -385,7 +382,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         print("responses initialized.")
 
     elif signal_type == "general":
-        param_names = ["longitude", "latitude", "polarization"]
+        param_names = ["longitude", "latitude", "psi"]
         params = dict() 
         for key in param_names: 
             params[key] = np.atleast_1d(parameters[key])
@@ -398,7 +395,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         response_list = [] 
         for i in tqdm(range(N_source)):
             general_i = GeneralWaveform(tdata=data[i][0], hpdata=data[i][1], hcdata=data[i][2])
-            GW_i = GW(GWwaveform=general_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["polarization"][i]])
+            GW_i = GW(GWwaveform=general_i, orbit=orbit, ext_params=[params["longitude"][i], params["latitude"][i], params["psi"][i]])
             response_list.append(GW_i)
         print("responses initialized.")
 
@@ -472,13 +469,13 @@ class MBHB_FastLISA():
             print("mass scale:", mass_scale)
 
         if Mc <= 1e5: 
-            dt_wf = 1. 
+            dt_wf = 0.5
         elif Mc <= 1e6: 
             dt_wf = 5. 
         elif Mc <= 1e7: 
-            dt_wf = 15. 
+            dt_wf = 50. 
         else: 
-            dt_wf = 30. 
+            dt_wf = 100. 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -651,9 +648,10 @@ class MBHB_Injection():
 
 try:  
     from pyseobnr.generate_waveform import GenerateWaveform, generate_modes_opt
-    print("Has pyseobnr") 
+    # print("Has pyseobnr") 
 except ImportError:  
-    print("No pyseobnr")
+    # print("No pyseobnr")
+    pass 
     
 class MBHB_v5_Injection():
     def __init__(self, approximant="SEOBNRv5HM", verbose=0):
