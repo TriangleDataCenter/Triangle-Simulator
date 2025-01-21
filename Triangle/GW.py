@@ -486,9 +486,7 @@ class MBHB_FastLISA():
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            if 'D' in self.approx_method:
-                m_max = 2 
-            elif 'HM' in self.approx_method:
+            if 'HM' in self.approx_method:
                 m_max = 4 
             else:
                 m_max = 2
@@ -582,13 +580,13 @@ class MBHB_Injection():
             print("mass scale:", mass_scale)
 
         if Mc <= 1e5: 
-            dt_wf = 1. 
+            dt_wf = 0.5
         elif Mc <= 1e6: 
             dt_wf = 5. 
         elif Mc <= 1e7: 
-            dt_wf = 15. 
+            dt_wf = 50. 
         else: 
-            dt_wf = 30. 
+            dt_wf = 100. 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -599,9 +597,7 @@ class MBHB_Injection():
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            if 'D' in self.approx_method:
-                m_max = 2 
-            elif 'HM' in self.approx_method:
+            if 'HM' in self.approx_method:
                 m_max = 4 
             else:
                 m_max = 2
@@ -697,13 +693,13 @@ class MBHB_v5_Injection():
 
         # set sampling rate 
         if Mc <= 1e5:
-            sampling_rate = 1. 
+            sampling_rate = 2. 
         elif Mc <= 1e6: 
-            sampling_rate = 0.1
+            sampling_rate = 0.2
         elif Mc <= 1e7: 
-            sampling_rate = 0.01 
+            sampling_rate = 0.02
         else: 
-            sampling_rate = 0.0033
+            sampling_rate = 0.01
             
         # set rescaled parameters 
         mass_scale = max(Mc / 50., 1.)
