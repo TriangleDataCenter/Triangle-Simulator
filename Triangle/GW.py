@@ -837,7 +837,7 @@ class GB_Injection():
         phi0 = params["phase0"]
         cosiota = self.xp.cos(params["inclination"])
         fddot = 11.0 / 3.0 * fdot ** 2 / f
-        times_in = self.xp.arange(times[0], times[-1], min(3e-2/f, times[1]-times[0]))
+        times_in = self.xp.arange(times[0], times[-1], self.xp.float64(min(3e-2/f, times[1]-times[0])))
         phase = 2 * self.xp.pi * (f * times_in + 1.0 / 2.0 * fdot * times_in ** 2 + 1.0 / 6.0 * fddot * times_in ** 3) + phi0
 
         hp = self.xp.cos(phase) * A * (1.0 + cosiota ** 2)
