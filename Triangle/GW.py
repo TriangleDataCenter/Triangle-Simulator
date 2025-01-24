@@ -867,10 +867,9 @@ class GeneralTDIResponse:
     MBHB_param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi']
     MBHB_v5_param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'reference_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi', 'eccentricity']
     general_param_names = ['longitude', 'latitude', 'psi']
-    def __init__(self, waveform_generator, orbit, Pstring, tcb_times, use_gpu=False, drop_points=0, linear_interp=True, return_eta=False):
+    def __init__(self, orbit, Pstring, tcb_times, use_gpu=False, drop_points=0, linear_interp=True, return_eta=False):
         """  
         Args: 
-            waveform_generator: a waveform object, which has a __call__ function that returns source-frame polarizations hp + ihc for given parameters 
             and the times at which the polarizations are calculated, which do not have to be identical to the input times. 
             orbit: an orbit object 
             Pstring: a string specifying the TDI channel
@@ -878,7 +877,6 @@ class GeneralTDIResponse:
             use_gpu: if True, the waveform generator should takes cupy arraies as inputs and outputs cupy arraies
             gpu acceleration can only be used when linear_interp=True, while the accuracy of linear interpolation is no sufficient for complex waveforms such as HM MBHB and EMRI
         """
-        self.waveform_generator = waveform_generator
         self.orbit_object = orbit
         self.tcb_times = tcb_times.copy()
         self.Ntime = len(tcb_times)
@@ -959,7 +957,16 @@ class GeneralTDIResponse:
         self.ec_0 = self.xp.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
 
         
-    def __call__(self, parameters):
+    def __call__(self, parameters, waveform_generator):
+        """  
+        Args: 
+            parameters: a dictionary storing the source parameters 
+            waveform_generator: a waveform object, which has a __call__ function that returns source-frame polarizations hp + ihc for given parameters 
+        Returns: 
+            the time series of TDI responses 
+        """
+        self.waveform_generator = waveform_generator
+        
         # calculate wave vector and polar bases using the extrinsic parameters 
         l = parameters["longitude"]
         b = parameters["latitude"]
