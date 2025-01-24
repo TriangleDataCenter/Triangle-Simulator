@@ -24,23 +24,20 @@ def FFT_window(data_array, fsample, window_type=None, window_args_dict=window_di
     else:
         if window_type == "kaiser":
             window = windows.kaiser
-            scale_factor = 2.480
         elif window_type == "hann":
             window = windows.hann
-            scale_factor = 2.0
         elif window_type == "hamming":
             window = windows.hamming
-            scale_factor = 1.852
         elif window_type == "blackman":
             window = windows.blackman
-            scale_factor = 2.381
         elif window_type == "tukey": 
             window = windows.tukey
-            scale_factor = 1. # the window factor should be adaptive for different alpha values
         else:
             raise ValueError("Unsupported window type.")
 
-        fft_array = rfft(data_array * window(M=n_data, **window_args_dict))[1:n_f] / fsample * scale_factor
+        window_coefs = window(M=n_data, **window_args_dict)
+        scale_factor = n_data / np.sum(window_coefs)
+        fft_array = rfft(data_array * window_coefs)[1:n_f] / fsample * scale_factor
 
     return f, fft_array
 
