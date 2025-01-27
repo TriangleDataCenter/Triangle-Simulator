@@ -27,16 +27,21 @@ class Orbit:
         self.tdata = np.arange(self.N) * dt - self.tstart
         self.dt = dt
 
-        # calculate LTT, arm vector
         LTTdata = {}
         self._LTTfunctions = {}
         self._Dopplerfunctions = {}
+        self.LTT_time_int = dict() # used in MBHB response calculation 
+        self.LTT_data_int = dict() # used in MBHB response calculation 
 
         ARMdata = {}
         self._ArmVectorfunctions = {}
+        self.ARM_time_int = dict() # used in MBHB response calculation  
+        self.ARM_data_int = dict() # used in MBHB response calculation  
 
         self._Positionfunctions = {}
         self._Velocityfunctions = {}
+        self.POS_time_int = dict() # used in MBHB response calculation   
+        self.POS_data_int = dict() # used in MBHB response calculation  
 
         for label in MOSA_labels:
             send_SC = label[1]
@@ -76,6 +81,8 @@ class Orbit:
             # LTTs are calculated at the emission times, while in the simulation we use LTTs at the reception times
             self._LTTfunctions[label] = InterpolatedUnivariateSpline(self.tdata + LTTdata[label], LTTdata[label], k=5, ext="extrapolate")
             self._Dopplerfunctions[label] = self._LTTfunctions[label].derivative()
+            self.LTT_time_int[label] = self.tdata + LTTdata[label] # (Ntime) used in MBHB response calculation  
+            self.LTT_data_int[label] = LTTdata[label].copy() # (Ntime) in [s] used in MBHB response calculation  
 
             ARMdata[label] = ARM0 + ARM1
             # arm vectors are calculated at the emission times, while in the simulation we use arm vectors at the reception times
@@ -87,6 +94,8 @@ class Orbit:
                 bounds_error=False,
                 fill_value="extrapolate",
             )
+            self.ARM_time_int[label] = self.tdata + LTTdata[label] # (Ntime) used in MBHB response calculation  
+            self.ARM_data_int[label] = ARMdata[label].copy() # (Ntime, 3) used in MBHB response calculation  
 
         self.TCBinTPSfunctions = {}
         self.TPSinTCBfunctions = {}
@@ -133,6 +142,8 @@ class Orbit:
                 bounds_error=False,
                 fill_value="extrapolate",
             )
+            self.POS_time_int[label] = self.tdata.copy() # (Ntime) used in MBHB response calculation  
+            self.POS_data_int[label] = self.rdata[label]/C # (Ntime, 3) in [s] used in MBHB response calculation  
 
     def ListMembers(self):
         for name, value in vars(self).items():
