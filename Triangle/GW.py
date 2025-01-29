@@ -269,15 +269,17 @@ class MBHB:
             print("minimum frequency:", f_lower)
             
         # conservative choice for the sampling cadance 
+        # if dt is None:
+        #     if Mc <= 1e5:
+        #         dt = 0.5
+        #     elif Mc <= 1e6:
+        #         dt = 5.
+        #     elif Mc <= 1e7: 
+        #         dt = 50.
+        #     else: 
+        #         dt = 100.
         if dt is None:
-            if Mc <= 1e5:
-                dt = 0.5
-            elif Mc <= 1e6:
-                dt = 5.
-            elif Mc <= 1e7: 
-                dt = 50.
-            else: 
-                dt = 100.
+            dt = 1.5e-5 * Mc 
 
         # calculate waveform
         # hp, hc = wf.get_td_waveform_from_fd(
@@ -468,14 +470,15 @@ class MBHB_FastLISA():
         if self.verbose == 1: 
             print("mass scale:", mass_scale)
 
-        if Mc <= 1e5: 
-            dt_wf = 0.5
-        elif Mc <= 1e6: 
-            dt_wf = 5. 
-        elif Mc <= 1e7: 
-            dt_wf = 50. 
-        else: 
-            dt_wf = 100. 
+        # if Mc <= 1e5: 
+        #     dt_wf = 0.5
+        # elif Mc <= 1e6: 
+        #     dt_wf = 5. 
+        # elif Mc <= 1e7: 
+        #     dt_wf = 50. 
+        # else: 
+        #     dt_wf = 100. 
+        dt_wf = 1.5e-5 * Mc 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -579,14 +582,15 @@ class MBHB_Injection():
         if self.verbose == 1: 
             print("mass scale:", mass_scale)
 
-        if Mc <= 1e5: 
-            dt_wf = 0.5
-        elif Mc <= 1e6: 
-            dt_wf = 5. 
-        elif Mc <= 1e7: 
-            dt_wf = 50. 
-        else: 
-            dt_wf = 100. 
+        # if Mc <= 1e5: 
+        #     dt_wf = 0.5
+        # elif Mc <= 1e6: 
+        #     dt_wf = 5. 
+        # elif Mc <= 1e7: 
+        #     dt_wf = 50. 
+        # else: 
+        #     dt_wf = 100. 
+        dt_wf = 1.5e-5 * Mc 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -692,14 +696,15 @@ class MBHB_v5_Injection():
             ecc = params["eccentricity"]
 
         # set sampling rate 
-        if Mc <= 1e5:
-            sampling_rate = 2. 
-        elif Mc <= 1e6: 
-            sampling_rate = 0.2
-        elif Mc <= 1e7: 
-            sampling_rate = 0.02
-        else: 
-            sampling_rate = 0.01
+        # if Mc <= 1e5:
+        #     sampling_rate = 2. 
+        # elif Mc <= 1e6: 
+        #     sampling_rate = 0.2
+        # elif Mc <= 1e7: 
+        #     sampling_rate = 0.02
+        # else: 
+        #     sampling_rate = 0.01
+        sampling_rate = 1. / (1.5e-5 * Mc)
             
         # set rescaled parameters 
         mass_scale = max(Mc / 50., 1.)
