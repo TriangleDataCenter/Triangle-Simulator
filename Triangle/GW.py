@@ -279,7 +279,7 @@ class MBHB:
         #     else: 
         #         dt = 100.
         if dt is None:
-            dt = 1.5e-5 * Mc 
+            dt = 1e-5 * Mc 
 
         # calculate waveform
         # hp, hc = wf.get_td_waveform_from_fd(
@@ -478,7 +478,7 @@ class MBHB_FastLISA():
         #     dt_wf = 50. 
         # else: 
         #     dt_wf = 100. 
-        dt_wf = 1.5e-5 * Mc 
+        dt_wf = 1e-5 * Mc 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -590,7 +590,7 @@ class MBHB_Injection():
         #     dt_wf = 50. 
         # else: 
         #     dt_wf = 100. 
-        dt_wf = 1.5e-5 * Mc 
+        dt_wf = 1e-5 * Mc 
 
         # get rescaled masses 
         m1 = m1_Mc_q(Mc, q) / mass_scale
@@ -704,7 +704,7 @@ class MBHB_v5_Injection():
         #     sampling_rate = 0.02
         # else: 
         #     sampling_rate = 0.01
-        sampling_rate = 1. / (1.5e-5 * Mc)
+        sampling_rate = 1. / (1e-5 * Mc)
             
         # set rescaled parameters 
         mass_scale = max(Mc / 50., 1.)
