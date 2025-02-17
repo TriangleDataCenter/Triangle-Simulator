@@ -651,6 +651,55 @@ class TDI:
                 TDIContributer_ij += prefactor * delayed_eta_ij
             TDICombination += TDIContributer_ij
         return TDICombination
+    
+
+class TDIStringManipulation:
+    
+    replacement_rule = {"1": "2", "2": "3", "3": "1"}
+    
+    @classmethod
+    def replace_string(cls, s):
+        return "".join(cls.replacement_rule[char] for char in s)
+
+    @classmethod
+    def replace_in_list(cls, lst):
+        return [cls.replace_string(item) for item in lst]
+
+    @classmethod
+    def TDIStringCyc(cls, data):
+        new_dict = {}
+        for key, value in data.items():
+            
+            new_key = cls.replace_string(key)
+            
+            new_value = []
+            for v in value:
+                coefficient, str_list = v
+                new_value.append((coefficient, cls.replace_in_list(str_list)))
+            
+            new_dict[new_key] = new_value
+        return new_dict
+
+    @classmethod
+    def TDIStringScalarProduct(cls, X2_strings, a):
+        new_X2_strings = dict() 
+        for key, value in X2_strings.items():
+            new_X2_strings[key] = [(coef * a, seq) for coef, seq in value]
+        return new_X2_strings
+
+    @classmethod
+    def AETStringsfromXString(cls, X2_strings):
+        Y2_strings = cls.TDIStringCyc(X2_strings)
+        Z2_strings = cls.TDIStringCyc(Y2_strings)
+        A2_strings = dict()
+        E2_strings = dict() 
+        T2_strings = dict() 
+        for key in MOSA_labels: 
+            A2_strings[key] = cls.TDIStringScalarProduct(X2_strings, -1./np.sqrt(2.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(2.))[key]
+            E2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1./np.sqrt(6.))[key] + cls.TDIStringScalarProduct(Y2_strings, -2./np.sqrt(6.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(6.))[key]
+            T2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1./np.sqrt(3.))[key] + cls.TDIStringScalarProduct(Y2_strings, 1./np.sqrt(3.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(3.))[key]
+        return A2_strings, E2_strings, T2_strings
+    
 
 
 def AETfromXYZ(X, Y, Z):
