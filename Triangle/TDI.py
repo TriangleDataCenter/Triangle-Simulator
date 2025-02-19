@@ -1003,3 +1003,29 @@ class TDISensitivity:
 
         # return sensitivity
         return PSD / Response_avg
+    
+    def TDI_noise_CSD(self, f, P_ij=None, Q_ij=None, P_ij_strings=None, Q_ij_strings=None, return_PSD=False):
+        """ calculate the noise CSD of channel P and Q, i.e. 2/T <P^* Q>, reduce to PSD if P = Q """
+        if P_ij is None:
+            P_ij = self.TDI_P_ij(P_ij_strings=P_ij_strings, f=f)
+        if Q_ij is None:
+            Q_ij = self.TDI_P_ij(P_ij_strings=Q_ij_strings, f=f)
+            
+        Dij = dict() 
+        for key in MOSA_labels: 
+            Dij[key] = np.exp(-1.j * TWOPI * f * self.dij[key])
+            
+        PSDFunction = InstrumentalPSDs(L=self.L)
+        PSDOMS = PSDFunction.PSD_RO(f=f, sro=self.S_OMS)
+        PSDACC = PSDFunction.PSD_ACC(f=f, sacc=self.S_ACC)
+            
+        CSD = np.zeros_like(f, dtype=np.complex128)
+        for key in MOSA_labels: 
+            invk = key[1]+key[0]
+            CSD += np.conjugate(P_ij[key]) * Q_ij[key] * PSDOMS + np.conjugate(P_ij[key] + P_ij[invk] * Dij[invk]) * (Q_ij[key] + Q_ij[invk] * Dij[invk]) * PSDACC
+            
+        if return_PSD: 
+            return np.real(CSD)
+        else: 
+            return CSD 
+    
