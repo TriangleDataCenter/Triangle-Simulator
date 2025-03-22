@@ -29,7 +29,11 @@ def downsampling(data, fsample, downsample, kaiser_filter_coef):
     logger.debug("Anti-aliase filtering with " + str(Ntaps) + "-order kaiser window.")
 
     # aafiltering & downsampling
-    aafiltered_data = lfilter(taps, 1, data)
+    # aafiltered_data = lfilter(taps, 1, data)
+    
+    tmp = lfilter(taps, 1, data)
+    aafiltered_data = np.concatenate((tmp[Ntaps//2:], np.zeros(Ntaps//2))) # shift data to recover the shift caused by filter 
+    
     downsampled_data = aafiltered_data[::downsample]
     logger.debug("Downsampled to " + str(teleport_fsample) + " Hz.")
     return downsampled_data
