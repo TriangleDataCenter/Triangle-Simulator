@@ -18,7 +18,6 @@ def downsampling(data, fsample, downsample, kaiser_filter_coef):
     # teleport sampling rate
     f_nyquist = fsample / 2.0
     teleport_fsample = fsample / downsample
-    logger.debug("Downsampling to " + str(teleport_fsample) + " Hz.")
 
     # kaiser window parameters
     attenuation, freq1, freq2 = kaiser_filter_coef
@@ -26,7 +25,6 @@ def downsampling(data, fsample, downsample, kaiser_filter_coef):
     # filter parameters
     Ntaps, beta = kaiserord(attenuation, (freq2 - freq1) / f_nyquist)
     taps = firwin(Ntaps, (freq1 + freq2) / fsample, window=("kaiser", beta))
-    logger.debug("Anti-aliase filtering with " + str(Ntaps) + "-order kaiser window.")
 
     # aafiltering & downsampling
     # aafiltered_data = lfilter(taps, 1, data)
@@ -35,7 +33,6 @@ def downsampling(data, fsample, downsample, kaiser_filter_coef):
     aafiltered_data = np.concatenate((tmp[Ntaps//2:], np.zeros(Ntaps//2))) # shift data to recover the shift caused by filter 
     
     downsampled_data = aafiltered_data[::downsample]
-    logger.debug("Downsampled to " + str(teleport_fsample) + " Hz.")
     return downsampled_data
 
 
