@@ -3,8 +3,8 @@ name = "Triangle"
 version = "0.1.0"
 description = "Space-based GW simulation software suite for triangular-constellation detectors"
 readme = "README.md"
-requires-python = ">=3.6"
-license = { text = "MIT" }
+requires-python = ">=3.9"
+license = { text = "GPL3" }
 authors = [
   { name = "Minghui Du", email = "your.email@example.com" },
 ]
@@ -23,10 +23,7 @@ dependencies = [
 dev = [
   "black",
   "ruff",
-  "flake8",
-  "isort",
   "pre-commit",
-  "blacken-docs",
 ]
 
 [tool.setuptools]
