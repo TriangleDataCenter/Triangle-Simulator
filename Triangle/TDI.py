@@ -105,7 +105,7 @@ class TDI:
         self.delays = delays.copy()
         self.fsample = fsample
         if "sci_c" in self.measurements.keys():
-            self.size = len(measurements['sci_c']['12'])
+            self.size = len(measurements["sci_c"]["12"])
         elif "eta" in self.measurements.keys():
             self.size = len(measurements["eta"]["12"])
         else:

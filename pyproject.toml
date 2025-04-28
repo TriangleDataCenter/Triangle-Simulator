@@ -90,7 +90,7 @@ exclude = [
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-ignore = ["C901", "E203", "E402", "E501", "E741", "E731", "F402", "F403", "F405", "F841"]
+ignore = ["C901", "E203", "E402", "E501", "E711", "E741", "E731", "F401", "F402", "F403", "F405", "F841"]
 select = ["E", "F", "W", "C90"]
 
 [tool.ruff.format]

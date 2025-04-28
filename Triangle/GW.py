@@ -316,8 +316,8 @@ class MBHB:
 class GeneralWaveform:
     def __init__(self, tdata, hpdata, hcdata, t0=0):
         tdata_int = tdata - tdata[0] + t0  # shift the starting time to t0
-        self.hpfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hpdata, k=5, ext='zeros')
-        self.hcfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hcdata, k=5, ext='zeros')
+        self.hpfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hpdata, k=5, ext="zeros")
+        self.hcfunc = InterpolatedUnivariateSpline(x=tdata_int, y=hcdata, k=5, ext="zeros")
 
 
 def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approximant=None, data=None):
@@ -335,7 +335,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         a list of GW objects, which can be passed to Interferometer().
     """
     if signal_type == "MBHB":
-        param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi']
+        param_names = ["chirp_mass", "mass_ratio", "spin_1z", "spin_2z", "coalescence_time", "coalescence_phase", "luminosity_distance", "inclination", "longitude", "latitude", "psi"]
         params = dict()
         for key in param_names:
             params[key] = np.atleast_1d(parameters[key])
@@ -365,11 +365,11 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         print("responses initialized.")
 
     elif signal_type == "GB":
-        param_names = ['A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi']
+        param_names = ["A", "f0", "fdot0", "phase0", "inclination", "longitude", "latitude", "psi"]
         params = dict()
         for key in param_names:
             params[key] = np.atleast_1d(parameters[key])
-        N_source = len(params['A'])
+        N_source = len(params["A"])
 
         print("initializing responses.")
         response_list = []
@@ -384,7 +384,7 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
         params = dict()
         for key in param_names:
             params[key] = np.atleast_1d(parameters[key])
-        N_source = len(params['longitude'])
+        N_source = len(params["longitude"])
         N_source1 = len(data)
         if N_source != N_source1:
             raise ValueError("numbers of sources mismatch.")
@@ -406,8 +406,8 @@ def Initialize_GW_response(parameters, signal_type="MBHB", orbit=None, approxima
 # ========================= fast GW TDI response injection ===========================
 class General_FastLISA:
     def __init__(self, t_data, hp_data, hc_data):
-        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hp_data, k=5, ext='zeros')
-        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hc_data, k=5, ext='zeros')
+        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hp_data, k=5, ext="zeros")
+        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hc_data, k=5, ext="zeros")
 
     def __call__(self, psi, T=1.0, dt=10.0):
         t = np.arange(0.0, T * YEAR, dt)
@@ -435,7 +435,7 @@ class General_Injection:
 
 
 class MBHB_FastLISA:
-    def __init__(self, approx_method='IMRPhenomD', modes=None, buffer=True, verbose=0):
+    def __init__(self, approx_method="IMRPhenomD", modes=None, buffer=True, verbose=0):
         """
         Args:
             modes: None or a list [(2, 2), (2, 1), ...] specifying the harmonic modes of waveform
@@ -485,7 +485,7 @@ class MBHB_FastLISA:
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            if 'HM' in self.approx_method:
+            if "HM" in self.approx_method:
                 m_max = 4
             else:
                 m_max = 2
@@ -499,7 +499,7 @@ class MBHB_FastLISA:
         f_lower *= mass_scale  # get rescaled lower frequency
         if self.verbose == 1:
             print("minimum frequency before rescale:", f_lower / mass_scale)
-            print('minimum frequency after rescale:', f_lower)
+            print("minimum frequency after rescale:", f_lower)
 
         # calculate waveform
         hp, hc = wf.get_td_waveform(approximant=self.approx_method, mass1=m1, mass2=m2, spin1z=spin1z, spin2z=spin2z, coa_phase=phic, distance=D, inclination=inc, delta_t=dt_wf / mass_scale, f_lower=f_lower, mode_array=self.modes)
@@ -511,11 +511,11 @@ class MBHB_FastLISA:
         t_data = np.array(hp.sample_times) * mass_scale + tc
         self.tend = t_data[-1]
         if self.verbose == 1:
-            print('length of data:', len(t_data))
+            print("length of data:", len(t_data))
 
         # get interpolation functions, used by TaijiSim
-        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=5, ext='zeros')
-        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=5, ext='zeros')
+        self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=5, ext="zeros")
+        self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=5, ext="zeros")
 
         # calculate hp and hc, considering the polarization angle
         t = np.arange(0.0, T * YEAR, dt)
@@ -529,7 +529,7 @@ class MBHB_FastLISA:
 
 
 class MBHB_Injection:
-    def __init__(self, approx_method='IMRPhenomD', modes=None, buffer=True, verbose=0):
+    def __init__(self, approx_method="IMRPhenomD", modes=None, buffer=True, verbose=0):
         """
         Args:
             modes: None or a list [(2, 2), (2, 1), ...] specifying the harmonic modes of waveform
@@ -589,7 +589,7 @@ class MBHB_Injection:
             m_array = [emm for (ell, emm) in self.modes]
             m_max = max(m_array)
         else:
-            if 'HM' in self.approx_method:
+            if "HM" in self.approx_method:
                 m_max = 4
             else:
                 m_max = 2
@@ -603,7 +603,7 @@ class MBHB_Injection:
         f_lower *= mass_scale  # get rescaled lower frequency
         if self.verbose == 1:
             print("minimum frequency before rescale:", f_lower / mass_scale)
-            print('minimum frequency after rescale:', f_lower)
+            print("minimum frequency after rescale:", f_lower)
 
         # calculate waveform
         hp, hc = wf.get_td_waveform(approximant=self.approx_method, mass1=m1, mass2=m2, spin1z=spin1z, spin2z=spin2z, coa_phase=phic, distance=D, inclination=inc, delta_t=dt_wf / mass_scale, f_lower=f_lower, mode_array=self.modes)
@@ -643,7 +643,7 @@ class MBHB_v5_Injection:
         * ``SEOBNRv5PHM``
         * ``SEOBNRv5EHM``
         """
-        if not approximant in ['SEOBNRv5HM', 'SEOBNRv5PHM', 'SEOBNRv5EHM']:
+        if approximant not in ["SEOBNRv5HM", "SEOBNRv5PHM", "SEOBNRv5EHM"]:
             raise ValueError("approximant not implemented.")
 
         self.approximant = approximant
@@ -830,7 +830,7 @@ class GB_Injection:
 
 
 class GeneralTDIResponse:
-    eta_strings = {'12': [(1.0, [])], '13': [(1.0, [])], '23': [(1.0, [])], '21': [(1.0, [])], '31': [(1.0, [])], '32': [(1.0, [])]}
+    eta_strings = {"12": [(1.0, [])], "13": [(1.0, [])], "23": [(1.0, [])], "21": [(1.0, [])], "31": [(1.0, [])], "32": [(1.0, [])]}
     X2_strings = {
         "12": [(1.0, []), (-1.0, ["13", "31"]), (-1.0, ["13", "31", "12", "21"]), (1.0, ["12", "21", "13", "31", "13", "31"])],
         "23": [],
@@ -839,10 +839,10 @@ class GeneralTDIResponse:
         "32": [],
         "13": [(-1.0, []), (1.0, ["12", "21"]), (1.0, ["12", "21", "13", "31"]), (-1.0, ["13", "31", "12", "21", "12", "21"])],
     }
-    GB_param_names = ['A', 'f0', 'fdot0', 'phase0', 'inclination', 'longitude', 'latitude', 'psi']
-    MBHB_param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'coalescence_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi']
-    MBHB_v5_param_names = ['chirp_mass', 'mass_ratio', 'spin_1z', 'spin_2z', 'coalescence_time', 'reference_phase', 'luminosity_distance', 'inclination', 'longitude', 'latitude', 'psi', 'eccentricity']
-    general_param_names = ['longitude', 'latitude', 'psi']
+    GB_param_names = ["A", "f0", "fdot0", "phase0", "inclination", "longitude", "latitude", "psi"]
+    MBHB_param_names = ["chirp_mass", "mass_ratio", "spin_1z", "spin_2z", "coalescence_time", "coalescence_phase", "luminosity_distance", "inclination", "longitude", "latitude", "psi"]
+    MBHB_v5_param_names = ["chirp_mass", "mass_ratio", "spin_1z", "spin_2z", "coalescence_time", "reference_phase", "luminosity_distance", "inclination", "longitude", "latitude", "psi", "eccentricity"]
+    general_param_names = ["longitude", "latitude", "psi"]
 
     def __init__(self, orbit, Pstring, tcb_times, use_gpu=False, drop_points=0, linear_interp=True, return_eta=False):
         """
@@ -999,8 +999,8 @@ class GeneralTDIResponse:
                     res[ikey] = (Fp_delta_hp + Fc_delta_hc) / Denominator
 
         else:
-            hp_func = InterpolatedUnivariateSpline(x=times_interp, y=self.xp.real(hphc0), k=5, ext='zeros')
-            hc_func = InterpolatedUnivariateSpline(x=times_interp, y=self.xp.imag(hphc0), k=5, ext='zeros')
+            hp_func = InterpolatedUnivariateSpline(x=times_interp, y=self.xp.real(hphc0), k=5, ext="zeros")
+            hc_func = InterpolatedUnivariateSpline(x=times_interp, y=self.xp.imag(hphc0), k=5, ext="zeros")
 
             for ikey, key in enumerate(MOSA_labels):
                 if self.Ndelay_dict[key] == 0:

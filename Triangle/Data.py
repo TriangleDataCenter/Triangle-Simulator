@@ -27,10 +27,10 @@ def downsampling(data, fsample, downsample, kaiser_filter_coef):
 
     # aafiltering & downsampling
     # aafiltered_data = lfilter(taps, 1, data)
-    
+
     tmp = lfilter(taps, 1, data)
-    aafiltered_data = np.concatenate((tmp[Ntaps//2:], np.zeros(Ntaps//2))) # shift data to recover the shift caused by filter 
-    
+    aafiltered_data = np.concatenate((tmp[Ntaps // 2 :], np.zeros(Ntaps // 2)))  # shift data to recover the shift caused by filter
+
     downsampled_data = aafiltered_data[::downsample]
     return downsampled_data
 
@@ -805,7 +805,7 @@ def timeshift(data, shifts, order=31):
         taps[halfp - 1] = 1 - shift_fracs
         taps[halfp] = shift_fracs
 
-    taps = taps.T  
+    taps = taps.T
 
     if shifts.size == 1:
         i_min = shift_ints - (halfp - 1)
@@ -833,30 +833,30 @@ def timeshift(data, shifts, order=31):
 
 
 def store_dict_to_h5(h5parent, dictitem):
-    for k, v in dictitem.items(): 
-        if isinstance(v, dict): 
+    for k, v in dictitem.items():
+        if isinstance(v, dict):
             group = h5parent.create_group(k)
             store_dict_to_h5(group, v)
-        else: 
-            if isinstance(v, (str, int, float)): 
+        else:
+            if isinstance(v, (str, int, float)):
                 v = np.array([v], dtype=h5py.special_dtype(vlen=str) if isinstance(v, str) else type(v))
-            else: 
+            else:
                 v = np.array(v)
             h5parent.create_dataset(k, data=v)
 
 
-def read_dict_from_h5(h5parent): 
-    result = {} 
-    for k, v in h5parent.items(): 
+def read_dict_from_h5(h5parent):
+    result = {}
+    for k, v in h5parent.items():
         if isinstance(v, h5py.Group):
             result[k] = read_dict_from_h5(v)
-        else: 
+        else:
             data = v[...]
-            if len(data) == 1: 
+            if len(data) == 1:
                 if data.dtype.kind == "U":
-                    result[k] = data[0].decode('utf-8')
-                else: 
+                    result[k] = data[0].decode("utf-8")
+                else:
                     result[k] = data[0]
-            else: 
-                result[k] = data 
-    return result 
+            else:
+                result[k] = data
+    return result

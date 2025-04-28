@@ -21,7 +21,7 @@ L_nominal = 3e9  # [m], nominal arm-length
 SACC_nominal = 3e-15  # [m/s2], nominal amplitude of the test-mass acceleration noise
 SOMS_nominal = 8e-12  # [m], nominal amplitude of the optical metrology noise
 
-# [RO] readout noise amplitudes of different interferometers. These are what TDC actually uses. 
+# [RO] readout noise amplitudes of different interferometers. These are what TDC actually uses.
 # SRO_SCI_C_nominal = 5.69e-12 # [m], sci_c readout noise
 # SRO_SCI_SB_nominal = 11.20e-12 # [m], sci_sb readout noise
 # SRO_TM_C_nominal = 1.27e-12 # [m], tm_c readout noise
@@ -35,7 +35,7 @@ SRO_TM_C_nominal = 0  # [m], tm_c readout noise
 SRO_REF_C_nominal = 0  # [m], ref_c readout noise
 SRO_REF_SB_nominal = 0  # [m], ref_sb readout noise
 
-# [OP] optical path noises for different paths. These are what TDC actually uses. 
+# [OP] optical path noises for different paths. These are what TDC actually uses.
 # SOP_TM_LOCAL_nominal = 3.79e-12 # [m]
 # SOP_REF_LOCAL_nominal = 1.79e-12 # [m]
 # SOP_OTHER_nominal = 0.90e-15 # [m]
