@@ -1,8 +1,6 @@
 
 # Triangle-Simulator
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
 ## Overview
 
 **Triangle-Simulator** is a full-Python prototype simulator for the data of various space-based gravitational wave detectors.
@@ -65,7 +63,7 @@ After installation, you can utilize the package modules in your Python scripts o
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
 <!-- ## Acknowledgements -->
 
