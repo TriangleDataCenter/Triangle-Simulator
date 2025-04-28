@@ -6,6 +6,7 @@
 core
 # Pre-commit
 .pre-commit/
+.ruff_cache/
 
 ### OSX ###
 # General

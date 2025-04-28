@@ -1,6 +1,5 @@
 import logging
 
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -32,12 +31,12 @@ class TDI:
 
     # examples for the P strings (NOTE that the sign of XYZ should be inverted to be consistent with the path strings and fast michelson calculations)
     X2_string = {
-        "12": [(1., []), (-1., ["13", "31"]), (-1., ["13", "31", "12", "21"]), (1., ["12", "21", "13", "31", "13", "31"])], 
-        "23": [], 
-        "31": [(-1., ["13"]), (1., ["12", "21", "13"]), (1., ["12", "21", "13", "31", "13"]), (-1., ["13", "31", "12", "21", "12", "21", "13"])], 
-        "21": [(1., ["12"]), (-1., ["13", "31", "12"]), (-1., ["13", "31", "12", "21", "12"]), (1., ["12", "21", "13", "31", "13", "31", "12"])], 
-        "32": [], 
-        "13": [(-1., []), (1., ["12", "21"]), (1., ["12", "21", "13", "31"]), (-1., ["13", "31", "12", "21", "12", "21"])], 
+        "12": [(1.0, []), (-1.0, ["13", "31"]), (-1.0, ["13", "31", "12", "21"]), (1.0, ["12", "21", "13", "31", "13", "31"])],
+        "23": [],
+        "31": [(-1.0, ["13"]), (1.0, ["12", "21", "13"]), (1.0, ["12", "21", "13", "31", "13"]), (-1.0, ["13", "31", "12", "21", "12", "21", "13"])],
+        "21": [(1.0, ["12"]), (-1.0, ["13", "31", "12"]), (-1.0, ["13", "31", "12", "21", "12"]), (1.0, ["12", "21", "13", "31", "13", "31", "12"])],
+        "32": [],
+        "13": [(-1.0, []), (1.0, ["12", "21"]), (1.0, ["12", "21", "13", "31"]), (-1.0, ["13", "31", "12", "21", "12", "21"])],
     }
     C_12_3_strings = {
         "13": [(1.0, ["32", "23", "-31"]), (-1.0, ["31", "-12", "23", "-31"])],
@@ -109,7 +108,7 @@ class TDI:
             self.size = len(measurements['sci_c']['12'])
         elif "eta" in self.measurements.keys():
             self.size = len(measurements["eta"]["12"])
-        else: 
+        else:
             raise ValueError("can not decide data size.")
         self.order = order
         self.delay_order = delay_order
@@ -611,7 +610,6 @@ class TDI:
         else:
             raise ValueError("Only X, XYZ or AET supported.")
 
-
     def CalculateTDIFromPStrings(self, PStrings, doppler=True):
         """
         args:
@@ -651,12 +649,11 @@ class TDI:
                 TDIContributer_ij += prefactor * delayed_eta_ij
             TDICombination += TDIContributer_ij
         return TDICombination
-    
+
 
 class TDIStringManipulation:
-    
     replacement_rule = {"1": "2", "2": "3", "3": "1"}
-    
+
     @classmethod
     def replace_string(cls, s):
         return "".join(cls.replacement_rule[char] for char in s)
@@ -669,20 +666,19 @@ class TDIStringManipulation:
     def TDIStringCyc(cls, data):
         new_dict = {}
         for key, value in data.items():
-            
             new_key = cls.replace_string(key)
-            
+
             new_value = []
             for v in value:
                 coefficient, str_list = v
                 new_value.append((coefficient, cls.replace_in_list(str_list)))
-            
+
             new_dict[new_key] = new_value
         return new_dict
 
     @classmethod
     def TDIStringScalarProduct(cls, X2_strings, a):
-        new_X2_strings = dict() 
+        new_X2_strings = dict()
         for key, value in X2_strings.items():
             new_X2_strings[key] = [(coef * a, seq) for coef, seq in value]
         return new_X2_strings
@@ -692,14 +688,13 @@ class TDIStringManipulation:
         Y2_strings = cls.TDIStringCyc(X2_strings)
         Z2_strings = cls.TDIStringCyc(Y2_strings)
         A2_strings = dict()
-        E2_strings = dict() 
-        T2_strings = dict() 
-        for key in MOSA_labels: 
-            A2_strings[key] = cls.TDIStringScalarProduct(X2_strings, -1./np.sqrt(2.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(2.))[key]
-            E2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1./np.sqrt(6.))[key] + cls.TDIStringScalarProduct(Y2_strings, -2./np.sqrt(6.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(6.))[key]
-            T2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1./np.sqrt(3.))[key] + cls.TDIStringScalarProduct(Y2_strings, 1./np.sqrt(3.))[key] + cls.TDIStringScalarProduct(Z2_strings, 1./np.sqrt(3.))[key]
+        E2_strings = dict()
+        T2_strings = dict()
+        for key in MOSA_labels:
+            A2_strings[key] = cls.TDIStringScalarProduct(X2_strings, -1.0 / np.sqrt(2.0))[key] + cls.TDIStringScalarProduct(Z2_strings, 1.0 / np.sqrt(2.0))[key]
+            E2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1.0 / np.sqrt(6.0))[key] + cls.TDIStringScalarProduct(Y2_strings, -2.0 / np.sqrt(6.0))[key] + cls.TDIStringScalarProduct(Z2_strings, 1.0 / np.sqrt(6.0))[key]
+            T2_strings[key] = cls.TDIStringScalarProduct(X2_strings, 1.0 / np.sqrt(3.0))[key] + cls.TDIStringScalarProduct(Y2_strings, 1.0 / np.sqrt(3.0))[key] + cls.TDIStringScalarProduct(Z2_strings, 1.0 / np.sqrt(3.0))[key]
         return A2_strings, E2_strings, T2_strings
-    
 
 
 def AETfromXYZ(X, Y, Z):
@@ -1003,29 +998,28 @@ class TDISensitivity:
 
         # return sensitivity
         return PSD / Response_avg
-    
+
     def TDI_noise_CSD(self, f, P_ij=None, Q_ij=None, P_ij_strings=None, Q_ij_strings=None, return_PSD=False):
-        """ calculate the noise CSD of channel P and Q, i.e. 2/T <P^* Q>, reduce to PSD if P = Q """
+        """calculate the noise CSD of channel P and Q, i.e. 2/T <P^* Q>, reduce to PSD if P = Q"""
         if P_ij is None:
             P_ij = self.TDI_P_ij(P_ij_strings=P_ij_strings, f=f)
         if Q_ij is None:
             Q_ij = self.TDI_P_ij(P_ij_strings=Q_ij_strings, f=f)
-            
-        Dij = dict() 
-        for key in MOSA_labels: 
-            Dij[key] = np.exp(-1.j * TWOPI * f * self.dij[key])
-            
+
+        Dij = dict()
+        for key in MOSA_labels:
+            Dij[key] = np.exp(-1.0j * TWOPI * f * self.dij[key])
+
         PSDFunction = InstrumentalPSDs(L=self.L)
         PSDOMS = PSDFunction.PSD_RO(f=f, sro=self.S_OMS)
         PSDACC = PSDFunction.PSD_ACC(f=f, sacc=self.S_ACC)
-            
+
         CSD = np.zeros_like(f, dtype=np.complex128)
-        for key in MOSA_labels: 
-            invk = key[1]+key[0]
+        for key in MOSA_labels:
+            invk = key[1] + key[0]
             CSD += np.conjugate(P_ij[key]) * Q_ij[key] * PSDOMS + np.conjugate(P_ij[key] + P_ij[invk] * Dij[invk]) * (Q_ij[key] + Q_ij[invk] * Dij[invk]) * PSDACC
-            
-        if return_PSD: 
+
+        if return_PSD:
             return np.real(CSD)
-        else: 
-            return CSD 
-    
+        else:
+            return CSD

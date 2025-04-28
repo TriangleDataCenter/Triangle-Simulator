@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.fft import fft, fftfreq, rfft, rfftfreq
+from numpy.fft import rfft, rfftfreq
 from scipy.signal import csd, welch, windows
 
 tukey_dict_default = dict(alpha=0.4)
@@ -30,7 +30,7 @@ def FFT_window(data_array, fsample, window_type=None, window_args_dict=window_di
             window = windows.hamming
         elif window_type == "blackman":
             window = windows.blackman
-        elif window_type == "tukey": 
+        elif window_type == "tukey":
             window = windows.tukey
         else:
             raise ValueError("Unsupported window type.")

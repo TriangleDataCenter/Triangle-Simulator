@@ -10,7 +10,7 @@
 ## Features
 
 - **Highly integrated:** The simulation of various instrumental noises, gravitational wave signals and time-delay interferometry processing.
-- **High flexibility:** custom numerial orbits, noise data, gravitational wave signals and time-delay interferometry combinations. 
+- **High flexibility:** custom numerial orbits, noise data, gravitational wave signals and time-delay interferometry combinations.
 
 ## Getting Started
 
@@ -31,29 +31,29 @@
 2. **Create and Activate a Conda Environment**
 
    ```sh
-   conda create -n tri_env python=3.9.19
+   conda create -n tri_env python=3.9.19 uv
    conda activate tri_env
    ```
 
-3. **Install Required Packages**
+<!-- 3. **Install Required Packages**
 
    ```sh
-   pip install -r requirements.txt
+   uv pip install .
    ```
 
-   *Note: Triangle itself does not depend on PyCBC. It is only used for demonstration purposes in the provided Jupyter notebooks.*
+   *Note: Triangle itself does not depend on PyCBC, and PyCBC is only used for demonstration purposes in the provided Jupyter notebooks.* -->
 
-4. **Install the Package Locally in Editable Mode**
+3. **Install the Package Locally in Editable Mode**
 
    ```sh
-   pip install -e .
+   uv pip install -e .
    ```
 
 ## Usage
 
 ### Using the Package
 
-After installation, you can utilize the package modules in your Python scripts or interactive sessions. Demonstrations for the usage of this code can be found at the Example folder. 
+After installation, you can utilize the package modules in your Python scripts or interactive sessions. Demonstrations for the usage of this code can be found at the Example folder.
 
 ## Data
 

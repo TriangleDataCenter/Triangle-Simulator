@@ -2,9 +2,9 @@ import logging
 
 # to mute the warnings of lal
 import warnings
+
 warnings.filterwarnings("ignore", "Wswiglal-redir-stdio")
 import lal
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -61,8 +61,8 @@ class Interferometers:
         # the start time of simulation
         t0=0,
         time_frame="ProperTime",
-        garbage_time1=0.,
-        garbage_time2=0.,
+        garbage_time1=0.0,
+        garbage_time2=0.0,
         telemetry_downsample=None,
         aafilter_coef=[240, 1.1, 2.9],  # downsampling filter used for 16Hz -> 4Hz
         detrend_order=None,
