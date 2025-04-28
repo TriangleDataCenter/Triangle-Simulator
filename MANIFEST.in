@@ -1,7 +1,0 @@
-include LICENSE
-include README.md
-recursive-include Figures *.png
-recursive-include GWData *.npy
-recursive-include OrbitData *.dat *.hdf5
-global-exclude *.ipynb
-global-exclude __pycache__/*

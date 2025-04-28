@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.fft import fft, fftfreq, rfft, rfftfreq
+from numpy.fft import rfft, rfftfreq
 from scipy.signal import csd, welch, windows
 
 tukey_dict_default = dict(alpha=0.4)

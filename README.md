@@ -69,22 +69,22 @@ TriangleProject/
 2. **Create and Activate a Conda Environment**
 
    ```sh
-   conda create -n tri_env python=3.9.19
+   conda create -n tri_env python=3.9.19 uv
    conda activate tri_env
    ```
 
-3. **Install Required Packages**
+<!-- 3. **Install Required Packages**
 
    ```sh
-   pip install -r requirements.txt
+   uv pip install .
    ```
 
-   *Note: Triangle itself does not depend on PyCBC, and PyCBC is only used for demonstration purposes in the provided Jupyter notebooks.*
+   *Note: Triangle itself does not depend on PyCBC, and PyCBC is only used for demonstration purposes in the provided Jupyter notebooks.* -->
 
-4. **Install the Package Locally in Editable Mode**
+3. **Install the Package Locally in Editable Mode**
 
    ```sh
-   pip install -e .
+   uv pip install -e .
    ```
 
 ## Usage

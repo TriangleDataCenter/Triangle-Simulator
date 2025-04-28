@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pycbc.waveform as wf
-from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 from Triangle.Constants import *
 from Triangle.Data import *
