@@ -31,7 +31,7 @@
 2. **Create and Activate a Conda Environment**
 
    ```sh
-   conda create -n tri_env python=3.9.19 uv
+   conda create -n tri_env -c conda-forge python=3.9.19 uv
    conda activate tri_env
    ```
 
