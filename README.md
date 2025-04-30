@@ -51,7 +51,7 @@
 
 ### Using the Package
 
-After installation, you can utilize the package modules in your Python scripts or interactive sessions. Demonstrations for the usage of this code can be found at the Example folder.
+After installation, you can utilize the package modules in your Python scripts or interactive sessions. Demonstrations for the usage of this code can be found at the Tutorial folder.
 
 ## Data
 
