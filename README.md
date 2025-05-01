@@ -4,6 +4,9 @@
 ## Overview
 
 **Triangle-Simulator** is a full-Python prototype simulator for the data of various space-based gravitational wave detectors.
+For **Taiji Data Challenge** users, please make sure to look at Tutorial 5. 
+If you are interested how the noises and signals are simulated, Tutorial 4 should serve as a brief guide. 
+For the hard-core players who are curious about how the raw data looks like, you are really cool and please have fun with Tutorial 1 - 3.
 
 ## Features
 
