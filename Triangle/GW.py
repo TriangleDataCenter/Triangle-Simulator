@@ -513,7 +513,7 @@ class MBHB_FastLISA:
         if self.verbose == 1:
             print("length of data:", len(t_data))
 
-        # get interpolation functions, used by TaijiSim
+        # get interpolation functions
         self.hpfunc = InterpolatedUnivariateSpline(x=t_data, y=hSp_data, k=5, ext="zeros")
         self.hcfunc = InterpolatedUnivariateSpline(x=t_data, y=hSc_data, k=5, ext="zeros")
 
@@ -552,9 +552,9 @@ class MBHB_Injection:
                 "coalescence_phase": [rad]
                 "luminosity_distance": [MPC]
                 "inclination": [rad]
-            times: nuisance for MBHB
+            times: numpy array 
         Returns:
-            times, hp + i hc
+            t, hp + i hc
         """
         Mc = params["chirp_mass"]
         q = params["mass_ratio"]
@@ -595,7 +595,8 @@ class MBHB_Injection:
                 m_max = 2
 
         # set f_lower
-        Tobs = tc / YEAR
+        # Tobs = tc / YEAR
+        Tobs = (tc - times[0]) / YEAR
         f_lower = 1.75e-5 * (Mc / 1e6) ** (-5.0 / 8.0) * (Tobs / 10.0) ** (-3.0 / 8.0)
         if self.buffer:  # the buffered f_lower is at least 1.5 times lower
             f_lower = min(f_lower * 2.0 / m_max, f_lower / 1.5)
@@ -615,6 +616,7 @@ class MBHB_Injection:
         t_data = np.array(hp.sample_times) * mass_scale + tc
         self.tend = t_data[-1]
 
+        # reduce the computation time of interpolation 
         remain_time_idx = np.where((t_data >= times[0]) & (t_data <= times[-1]))[0]
         t_data = t_data[remain_time_idx]
         hSp_data = hSp_data[remain_time_idx]
@@ -662,9 +664,9 @@ class MBHB_v5_Injection:
                 "luminosity_distance": [MPC]
                 "inclination": [rad]
                 "eccentricity": [1], if EHM waveform
-            times: nuisance for MBHB
+            times: numpy array 
         Returns:
-            times, hp + i hc
+            t, hp + i hc
         """
         Mc = params["chirp_mass"]
         q = params["mass_ratio"]
@@ -697,7 +699,7 @@ class MBHB_v5_Injection:
         distance = D
         inclination = inc
         phiRef = phi_ref
-        fRef = 10e-3 * mass_scale  # so that the original f_ref is 1 mHz
+        fRef = 10e-3 * mass_scale  # so that the original f_ref is 10 mHz
         # fRef = 100., # so that the original f_ref is 100 Hz / mass_scale
         approximant = self.approximant
         s1x = s1y = s2x = s2y = 0.0
@@ -729,7 +731,7 @@ class MBHB_v5_Injection:
         if self.approximant == "SEOBNRv5EHM":
             params_dict["eccentricity"] = ecc
             params_dict.pop("f_ref")
-            fRef = f_min
+            fRef = f_min # for eccentric case, f_ref is decided by f_min hence not fixed 
 
         if self.verbose == 1:
             print("mass scale:", mass_scale)
