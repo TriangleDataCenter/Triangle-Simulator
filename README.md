@@ -63,7 +63,6 @@ After installation, you can utilize the package modules in your Python scripts o
 
 **Note:** Ensure that these data directories are present in the root directory after installation, as the package modules depend on them for proper functionality.
 
-
 ## License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
