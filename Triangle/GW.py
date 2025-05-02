@@ -1053,7 +1053,7 @@ class FastMichelsonTDIResponse:
     MBHB_v5_param_names = ["chirp_mass", "mass_ratio", "spin_1z", "spin_2z", "coalescence_time", "reference_phase", "luminosity_distance", "inclination", "longitude", "latitude", "psi", "eccentricity"]
     general_param_names = ["longitude", "latitude", "psi"]
 
-    def __init__(self, orbit, tcb_times, use_gpu=False, drop_points=0, interp_method="linear"):
+    def __init__(self, orbit, tcb_times, use_gpu=False, drop_points=0, interp_method="linear", complex_waveform_interp_order=5):
         """
         Initialize orbit-specified time delays, which will be used to calculate single-link responses and TDIs 
         Args:
@@ -1108,6 +1108,8 @@ class FastMichelsonTDIResponse:
                 self.interp_kwargs = dict(k=self.interp_k_order)
             else: 
                 raise NotImplementedError("Interpolation method not implemented.")
+            
+        self.complex_waveform_interp_order = complex_waveform_interp_order
             
         # the orbit functions use numpy array as input
         if isinstance(tcb_times, xp.ndarray) and HAS_GPU:
@@ -1211,8 +1213,8 @@ class FastMichelsonTDIResponse:
             
         if self.linear_interp:      
             if complex_waveform: 
-                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=5)
-                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=5)
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.complex_waveform_interp_order)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.complex_waveform_interp_order)
                 
                 t_send = self.tcb_times - self.d12 - kR2overC
                 t_recv = self.tcb_times - kR1overC
@@ -1288,8 +1290,8 @@ class FastMichelsonTDIResponse:
 
         else:
             if complex_waveform: 
-                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=5)
-                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=5)
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.complex_waveform_interp_order)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.complex_waveform_interp_order)
             else: 
                 hp_func = self.interp_class(x=times_interp, y=self.REAL(hphc0), **self.interp_kwargs)
                 hc_func = self.interp_class(x=times_interp, y=self.IMAG(hphc0), **self.interp_kwargs)
