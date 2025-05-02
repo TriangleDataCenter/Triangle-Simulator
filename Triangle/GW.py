@@ -88,6 +88,7 @@ def Mc_M_eta(M, eta):
 
 
 def SSBTimetoDetectorTime(time_ssb, orbit, longitude, latitude):
+    """ this function is usually used to remove the invalied data points after the end of waveform data """
     wave_vector = -np.array(
         [
             np.cos(longitude) * np.cos(latitude),
@@ -1060,6 +1061,9 @@ class FastMichelsonTDIResponse:
             tcb_times: TCB times at which the TDI responses will be calculated, numpy or cupy arraies 
             use_gpu: if True, the waveform generator should takes cupy arraies as inputs and outputs cupy arraies
             interp_method shoude be chosen from "linear", "Akima", "Spline3", "Spline4", "Spline5"
+            choise of interpolation method: 
+                1) for GBs, linear interpolation is generally enough 
+                2) for MBHBs spline interpolation is a safe choise. if the speed of linear interpolation is necessary, make sure to turn on complex_waveform
         """
         self.orbit_object = orbit
         self.Ntime = len(tcb_times)
@@ -1151,13 +1155,14 @@ class FastMichelsonTDIResponse:
         self.ep_0 = self.xp.array([[1, 0, 0], [0, -1, 0], [0, 0, 0]])
         self.ec_0 = self.xp.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
 
-    def __call__(self, parameters, waveform_generator, optimal_combination=False):
+    def __call__(self, parameters, waveform_generator, optimal_combination=False, complex_waveform=False):
         """
         Args:
             parameters: a dictionary storing the source parameters
             waveform_generator: a waveform object, which has a __call__ function that returns source-frame polarizations hp + ihc for given parameters
+            if complex_waveform is True, the waveform interpolation will always be done via splines, regardless of the interp_method setting.
         Returns:
-            the time series of TDI responses XYZ (optimal_combination=False) or AET (optimal_combination=True), shape is (3, Nt)
+            the time series of TDI responses XYZ (optimal_combination=False) or AET (optimal_combination=True), shape is (3, Nt) 
         """
         self.waveform_generator = waveform_generator
 
@@ -1205,12 +1210,53 @@ class FastMichelsonTDIResponse:
         kR3overC = self.MATMUL(self.position_vector_dict["3"], wave_vector) / C 
             
         if self.linear_interp:      
-            dh12 = self.LIN_INTERP(x=self.tcb_times - self.d12 - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) # (Ntime), complex 
-            dh23 = self.LIN_INTERP(x=self.tcb_times - self.d23 - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.)
-            dh31 = self.LIN_INTERP(x=self.tcb_times - self.d31 - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.)
-            dh21 = self.LIN_INTERP(x=self.tcb_times - self.d21 - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.)
-            dh32 = self.LIN_INTERP(x=self.tcb_times - self.d32 - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.)
-            dh13 = self.LIN_INTERP(x=self.tcb_times - self.d13 - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.)
+            if complex_waveform: 
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=5)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=5)
+                
+                t_send = self.tcb_times - self.d12 - kR2overC
+                t_recv = self.tcb_times - kR1overC
+                dhp12 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc12 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh12 = self.xp.nan_to_num(dhp12 + 1.j * dhc12, nan=0.) # (Ntime), complex 
+                
+                t_send = self.tcb_times - self.d23 - kR3overC
+                t_recv = self.tcb_times - kR2overC
+                dhp23 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc23 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh23 = self.xp.nan_to_num(dhp23 + 1.j * dhc23, nan=0.) # (Ntime), complex 
+                
+                t_send = self.tcb_times - self.d31 - kR1overC
+                t_recv = self.tcb_times - kR3overC
+                dhp31 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc31 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh31 = self.xp.nan_to_num(dhp31 + 1.j * dhc31, nan=0.) # (Ntime), complex 
+                
+                t_send = self.tcb_times - self.d21 - kR1overC
+                t_recv = self.tcb_times - kR2overC
+                dhp21 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc21 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh21 = self.xp.nan_to_num(dhp21 + 1.j * dhc21, nan=0.) # (Ntime), complex 
+                
+                t_send = self.tcb_times - self.d32 - kR2overC
+                t_recv = self.tcb_times - kR3overC
+                dhp32 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc32 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh32 = self.xp.nan_to_num(dhp32 + 1.j * dhc32, nan=0.) # (Ntime), complex 
+                
+                t_send = self.tcb_times - self.d13 - kR3overC
+                t_recv = self.tcb_times - kR1overC
+                dhp13 = hp_func(t_send, extrapolate=False) - hp_func(t_recv, extrapolate=False) # (Ntime)
+                dhc13 = hc_func(t_send, extrapolate=False) - hc_func(t_recv, extrapolate=False)
+                dh13 = self.xp.nan_to_num(dhp13 + 1.j * dhc13, nan=0.) # (Ntime), complex 
+
+            else: 
+                dh12 = self.LIN_INTERP(x=self.tcb_times - self.d12 - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) # (Ntime), complex 
+                dh23 = self.LIN_INTERP(x=self.tcb_times - self.d23 - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.)
+                dh31 = self.LIN_INTERP(x=self.tcb_times - self.d31 - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.)
+                dh21 = self.LIN_INTERP(x=self.tcb_times - self.d21 - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.)
+                dh32 = self.LIN_INTERP(x=self.tcb_times - self.d32 - kR2overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.)
+                dh13 = self.LIN_INTERP(x=self.tcb_times - self.d13 - kR3overC, xp=times_interp, fp=hphc0, left=0., right=0.) - self.LIN_INTERP(x=self.tcb_times - kR1overC, xp=times_interp, fp=hphc0, left=0., right=0.)
             
             eta12 = (Fp12 * self.REAL(dh12) + Fc12 * self.IMAG(dh12)) / Denominator12 # (Ntime)
             eta23 = (Fp23 * self.REAL(dh23) + Fc23 * self.IMAG(dh23)) / Denominator23
@@ -1241,8 +1287,12 @@ class FastMichelsonTDIResponse:
             Z2 = Z2_tmp - self.LIN_INTERP(x=self.tcb_times - self.d31323, xp=self.tcb_times, fp=Z2_tmp, left=0., right=0.) # (Ntime)
 
         else:
-            hp_func = self.interp_class(x=times_interp, y=self.REAL(hphc0), **self.interp_kwargs)
-            hc_func = self.interp_class(x=times_interp, y=self.IMAG(hphc0), **self.interp_kwargs)
+            if complex_waveform: 
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=5)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=5)
+            else: 
+                hp_func = self.interp_class(x=times_interp, y=self.REAL(hphc0), **self.interp_kwargs)
+                hc_func = self.interp_class(x=times_interp, y=self.IMAG(hphc0), **self.interp_kwargs)
                 
             t_send = self.tcb_times - self.d12 - kR2overC
             t_recv = self.tcb_times - kR1overC
