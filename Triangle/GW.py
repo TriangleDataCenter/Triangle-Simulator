@@ -102,6 +102,89 @@ def SSBTimetoDetectorTime(time_ssb, orbit, longitude, latitude):
     p0 = (p1 + p2 + p3) / 3.0
     return time_ssb + np.dot(wave_vector, p0) / C
 
+def SSB2Detector(lS, bS, pS, orbit, orbit_time):
+    # detector positons 
+    R1 = orbit.Positionfunctions()["1"](orbit_time) # (3,)
+    R2 = orbit.Positionfunctions()["2"](orbit_time)
+    R3 = orbit.Positionfunctions()["3"](orbit_time)
+    R0 = (R1 + R2 + R3) / 3. 
+    # print(R0.shape)
+    
+    # detector frame basis 
+    xD = (R3 - R1) / np.linalg.norm(R3 - R1)
+    x1D = (R3 - R2) / np.linalg.norm(R3 - R2)
+    zD = np.cross(x1D, xD) / np.linalg.norm(np.cross(x1D, xD))
+    yD = np.cross(zD, xD) / np.linalg.norm(np.cross(zD, xD))
+    # print("inner of xy =", np.dot(xD, yD))
+    # print("inner of yz =", np.dot(yD, zD))
+    # print("inner of zx =", np.dot(zD, xD))
+    
+    # sky position 
+    k = -np.array([np.cos(bS) * np.cos(lS), np.cos(bS) * np.sin(lS), np.sin(bS)])
+    # print("wavevector in SSB:", k)
+    bD = np.arcsin(-np.dot(k, zD))
+    tmp = -np.dot(k, yD) / np.cos(bD) # sin(lD), sin(lD) > 0 -> 0 to PI 
+    if tmp > 0.: 
+        lD = np.arccos(-np.dot(k, xD) / np.cos(bD))
+    else: 
+        lD = TWOPI - np.arccos(-np.dot(k, xD) / np.cos(bD))
+    
+    # polarization angle 
+    uS = np.array([np.sin(lS), -np.cos(lS), 0.])
+    vS = np.array([-np.sin(bS) * np.cos(lS), -np.sin(bS) * np.sin(lS), np.cos(bS)])
+    p = np.cos(pS) * uS + np.sin(pS) * vS 
+    uD = np.sin(lD) * xD - np.cos(lD) * yD 
+    vD = -np.sin(bD) * np.cos(lD) * xD - np.sin(bD) * np.sin(lD) * yD + np.cos(bD) * zD 
+    pD = np.arctan2(np.dot(p, vD), np.dot(p, uD))
+    if pD < 0.:
+        pD += PI 
+    
+    return lD, bD, pD 
+
+
+def Detector2SSB(lD, bD, pD, orbit, orbit_time): 
+    # SSB frame basis 
+    xS = np.array([1., 0., 0.])
+    yS = np.array([0., 1., 0.])
+    zS = np.array([0., 0., 1.])
+    
+    # detector positons 
+    R1 = orbit.Positionfunctions()["1"](orbit_time) # (3,)
+    R2 = orbit.Positionfunctions()["2"](orbit_time)
+    R3 = orbit.Positionfunctions()["3"](orbit_time)
+    R0 = (R1 + R2 + R3) / 3. 
+    
+    # detector frame basis 
+    xD = (R3 - R1) / np.linalg.norm(R3 - R1)
+    x1D = (R3 - R2) / np.linalg.norm(R3 - R2)
+    zD = np.cross(x1D, xD) / np.linalg.norm(np.cross(x1D, xD))
+    yD = np.cross(zD, xD) / np.linalg.norm(np.cross(zD, xD))
+    
+    # sky position 
+    k_coef = -np.array([np.cos(bD) * np.cos(lD), np.cos(bD) * np.sin(lD), np.sin(bD)])
+    k = k_coef[0] * xD + k_coef[1] * yD + k_coef[2] * zD 
+    # print("wavevector in SSB:", k)
+    bS = np.arcsin(-k[2])
+    tmp = -k[1] / np.cos(bS)
+    if tmp > 0.:
+        lS = np.arccos(-k[0] / np.cos(bS))
+    else: 
+        lS = TWOPI - np.arccos(-k[0] / np.cos(bS))
+    
+    # polarization angle 
+    uD_coef = np.array([np.sin(lD), -np.cos(lD), 0.])
+    vD_coef = np.array([-np.sin(bD) * np.cos(lD), -np.sin(bD) * np.sin(lD), np.cos(bD)])
+    uD = uD_coef[0] * xD + uD_coef[1] * yD + uD_coef[2] * zD 
+    vD = vD_coef[0] * xD + vD_coef[1] * yD + vD_coef[2] * zD 
+    p = np.cos(pD) * uD + np.sin(pD) * vD 
+    uS = np.sin(lS) * xS - np.cos(lS) * yS 
+    vS = -np.sin(bS) * np.cos(lS) * xS - np.sin(bS) * np.sin(lS) * yS + np.cos(bS) * zS 
+    pS = np.arctan2(np.dot(p, vS), np.dot(p, uS))
+    if pS < 0.:
+        pS += PI 
+    
+    return lS, bS, pS 
+
 
 class GW:
     def __init__(self, orbit, ext_params, t0=0, GWDir=None, GWwaveform=None):
