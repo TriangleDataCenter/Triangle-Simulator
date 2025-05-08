@@ -1136,7 +1136,7 @@ class FastMichelsonTDIResponse:
     MBHB_v5_param_names = ["chirp_mass", "mass_ratio", "spin_1z", "spin_2z", "coalescence_time", "reference_phase", "luminosity_distance", "inclination", "longitude", "latitude", "psi", "eccentricity"]
     general_param_names = ["longitude", "latitude", "psi"]
 
-    def __init__(self, orbit, tcb_times, use_gpu=False, drop_points=0, interp_method="linear", complex_waveform_interp_order=5):
+    def __init__(self, orbit, tcb_times, use_gpu=False, drop_points=0, interp_method="linear", waveform_interp_order=None):
         """
         Initialize orbit-specified time delays, which will be used to calculate single-link responses and TDIs 
         Args:
@@ -1146,7 +1146,7 @@ class FastMichelsonTDIResponse:
             interp_method shoude be chosen from "linear", "Akima", "Spline3", "Spline4", "Spline5"
             choise of interpolation method: 
                 1) for GBs, linear interpolation is generally enough 
-                2) for MBHBs spline interpolation is a safe choise. if the speed of linear interpolation is necessary, make sure to turn on complex_waveform
+                2) for MBHBs spline interpolation is a safe choise. if the speed of linear interpolation is necessary, make sure to set waveform_interp_order >=3 to avoid accuracy loss 
         """
         self.orbit_object = orbit
         self.Ntime = len(tcb_times)
@@ -1191,8 +1191,11 @@ class FastMichelsonTDIResponse:
                 self.interp_kwargs = dict(k=self.interp_k_order)
             else: 
                 raise NotImplementedError("Interpolation method not implemented.")
-            
-        self.complex_waveform_interp_order = complex_waveform_interp_order
+        
+        if waveform_interp_order is None: 
+            self.waveform_interp_order = 0 
+        else: 
+            self.waveform_interp_order = waveform_interp_order
             
         # the orbit functions use numpy array as input
         if isinstance(tcb_times, xp.ndarray) and HAS_GPU:
@@ -1240,12 +1243,12 @@ class FastMichelsonTDIResponse:
         self.ep_0 = self.xp.array([[1, 0, 0], [0, -1, 0], [0, 0, 0]])
         self.ec_0 = self.xp.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
 
-    def __call__(self, parameters, waveform_generator, optimal_combination=False, complex_waveform=False):
+    def __call__(self, parameters, waveform_generator, optimal_combination=False):
         """
         Args:
             parameters: a dictionary storing the source parameters
             waveform_generator: a waveform object, which has a __call__ function that returns source-frame polarizations hp + ihc for given parameters
-            if complex_waveform is True, the waveform interpolation will always be done via splines, regardless of the interp_method setting.
+            if waveform_interp_order is set, the waveform interpolation will always be done via splines, regardless of the interp_method setting.
         Returns:
             the time series of TDI responses XYZ (optimal_combination=False) or AET (optimal_combination=True), shape is (3, Nt) 
         """
@@ -1295,9 +1298,9 @@ class FastMichelsonTDIResponse:
         kR3overC = self.MATMUL(self.position_vector_dict["3"], wave_vector) / C 
             
         if self.linear_interp:      
-            if complex_waveform: 
-                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.complex_waveform_interp_order)
-                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.complex_waveform_interp_order)
+            if self.waveform_interp_order > 0:
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.waveform_interp_order)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.waveform_interp_order)
                 
                 t_send = self.tcb_times - self.d12 - kR2overC
                 t_recv = self.tcb_times - kR1overC
@@ -1372,9 +1375,9 @@ class FastMichelsonTDIResponse:
             Z2 = Z2_tmp - self.LIN_INTERP(x=self.tcb_times - self.d31323, xp=self.tcb_times, fp=Z2_tmp, left=0., right=0.) # (Ntime)
 
         else:
-            if complex_waveform: 
-                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.complex_waveform_interp_order)
-                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.complex_waveform_interp_order)
+            if self.waveform_interp_order > 0:
+                hp_func = self.xinterp.make_interp_spline(x=times_interp, y=self.REAL(hphc0), k=self.waveform_interp_order)
+                hc_func = self.xinterp.make_interp_spline(x=times_interp, y=self.IMAG(hphc0), k=self.waveform_interp_order)
             else: 
                 hp_func = self.interp_class(x=times_interp, y=self.REAL(hphc0), **self.interp_kwargs)
                 hc_func = self.interp_class(x=times_interp, y=self.IMAG(hphc0), **self.interp_kwargs)
