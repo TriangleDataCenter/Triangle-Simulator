@@ -5,12 +5,12 @@ import scipy.interpolate as interp
 try:
     import cupy as xp
     import cupyx.scipy.interpolate as xinterp
-    print("has cupy")
+    # print("has cupy")
     HAS_GPU = True
 except (ImportError, ModuleNotFoundError) as e:
     import numpy as xp
     import scipy.interpolate as xinterp  
-    print("no cupy ")
+    # print("no cupy ")
     HAS_GPU = False
 
 # to mute the warnings of lal
