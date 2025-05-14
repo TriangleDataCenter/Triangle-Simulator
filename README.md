@@ -22,7 +22,7 @@ For the hard-core players who are curious about how the raw data looks like, you
 
 ### Installation
 
-(Current tested platform: Ubuntu22.04, MacOS15)
+(Tested platform: Ubuntu22.04, MacOS15)
 
 1. **Clone the Repository**
 
