@@ -6,7 +6,7 @@
 **Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.
 For **Taiji Data Challenge** users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
-For the hard-core players who are curious about how the raw data looks like, you are really cool and please have fun with Tutorial 1 - 3.
+For the hard-core players who are curious about how the raw data looks like, you are really cool and please have fun with Tutorial 1 - 3.    
 
 ## Features
 
@@ -70,6 +70,12 @@ After installation, you can utilize the package modules in your Python scripts o
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
 <!-- ## Acknowledgements -->
+
+## Reference 
+
+- Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
+- Laser interferometry modeling [PhysRevD.107.083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). 
+- We use [PyCBC](https://pycbc.org/pycbc/latest/html/) as an example for external waveforms. 
 
 ## Contact
 
