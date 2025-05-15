@@ -74,7 +74,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 ## Reference 
 
 - Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
-- Laser interferometry modeling [PhysRevD.107.083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). 
+- Researches on Laser interferometry modeling: e.g. [PhysRevD.107.083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). 
 - We use [PyCBC](https://pycbc.org/pycbc/latest/html/) as an example for external waveforms. 
 
 ## Contact
