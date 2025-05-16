@@ -74,8 +74,8 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 ## Reference 
 
 - Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
-- Research on Laser interferometry modeling: e.g. [PhysRevD.107.083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019).
-- Research on the numerical simulation of drag-free control: e.g. 
+- The laser interfetormetry modeling and code design are greatly inspired by the [PhD thesis of J.-B. Bayle](https://hal.science/tel-03120731), the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument). 
+- Research on the numerical simulation of drag-free control: 
 
 
 ## Contact
