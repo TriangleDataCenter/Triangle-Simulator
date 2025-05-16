@@ -75,8 +75,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 - Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
 - Research on Laser interferometry modeling: e.g. [PhysRevD.107.083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019).
-- Research on the numerical simulation of drag-free control:   
-- We use [PyCBC](https://pycbc.org/pycbc/latest/html/) as an example for external waveforms.
+- Research on the numerical simulation of drag-free control: e.g. 
 
 
 ## Contact
