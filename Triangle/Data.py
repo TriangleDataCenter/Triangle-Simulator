@@ -772,6 +772,7 @@ def timeshift(data, shifts, order=31):
         data: input array
         shifts: array of time shifts [samples]
         order: interpolation order
+    TODO: test the 22-coefficient interpolation filter [arXiv:2412.14884], which seems faster and more robust
     """
     data = np.asarray(data)
     shifts = np.asarray(shifts)
