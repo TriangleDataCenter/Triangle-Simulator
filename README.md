@@ -6,7 +6,7 @@
 **Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.
 For **Taiji Data Challenge** users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
-Users who are curious about how the raw data looks like can refer to Tutorial 1 - 3.    
+Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
 
 ## Features
 
@@ -60,7 +60,7 @@ After installation, you can utilize the package modules in your Python scripts o
 
 ## Data
 
-- **GWData:** Contains gravitational wave waveform data.
+- **GWData:** Contains gravitational wave waveform data used as examples.
 - **OrbitData:** Contains the data of numerical orbit.
 
 **Note:** Ensure that these data directories are present in the root directory after installation, as the package modules depend on them for proper functionality.
@@ -74,7 +74,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 ## Reference 
 
 - Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
-- The modeling of laser interfetormetry and code structure design are greatly inspired by the [PhD thesis of J.-B. Bayle](https://hal.science/tel-03120731), the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument), as well as the related research works.  
+- The modeling of laser interfetormetry is greatly inspired by the [PhD thesis of J.-B. Bayle](https://hal.science/tel-03120731), the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as other related research works. In the current version, the lagrange interpolation filter is adapted from the implementation of [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument).  
 - Research on the numerical simulation of drag-free control: 
 
 
