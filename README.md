@@ -24,8 +24,8 @@ Users who are curious about how the raw data look like can refer to Tutorial 1 -
 
 (Tested platform: Ubuntu22.04, MacOS15)
 
-1. **Clone the Repository**
-
+1. **Clone the Repository**  
+(neglect the git clone step if you install from the downloaded .zip file)
    ```sh
    git clone https://github.com/TriangleDataCenter/Triangle-Simulator
    cd Triangle-Simulator
