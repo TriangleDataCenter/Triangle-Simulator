@@ -27,7 +27,7 @@ Users who are curious about how the raw data look like can refer to Tutorial 1 -
 1. **Clone the Repository**  
 (neglect the git clone step if you install from the downloaded .zip file)
    ```sh
-   git clone https://github.com/TriangleDataCenter/Triangle-Simulator
+   git clone https://github.com/TriangleDataCenter/Triangle-Simulator.git
    cd Triangle-Simulator
    ```
 
