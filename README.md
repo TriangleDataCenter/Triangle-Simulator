@@ -4,14 +4,14 @@
 ## Overview
 
 **Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.
-For **Taiji Data Challenge** users, please make sure to look at Tutorial 5. 
+For **Taiji Data Challenge II** users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
 Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
 
 ## Features
 
-- **Highly integrated:** The simulation of various instrumental noises, gravitational wave signals and time-delay interferometry processing.
-- **High flexibility:** custom numerial orbits, noise data, gravitational wave signals and time-delay interferometry combinations.
+- **Highly integrated:** The simulation of noises, gravitational wave signals, other instrumental effects and time-delay interferometry processing.
+- **High flexibility:** custom numerial orbits, noise data, gravitational wave waveforms and time-delay interferometry configurations.
 
 ## Getting Started
 
@@ -73,7 +73,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ## Reference 
 
-- Taiji Data Challenge \& Triangle: [the TDC \& Triangle paper](TBD).
+- Taiji Data Challenge II: [the TDC II paper](TBD), [the TDC II manual](TBD).
 - The modeling of laser interfetormetry is greatly inspired by the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as related research works such as [Phys. Rev. D 107, 083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). In the current version, the lagrange interpolation filter is adapted from the implementation of [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument), and more efficient approaches such as the [22-coefficient cosine-sum kernels](https://arxiv.org/html/2412.14884v1) will be tested in the future versions.   
 - Research on the numerical simulation of drag-free control: 
 
