@@ -3,10 +3,15 @@
 
 ## Overview
 
-**Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.  
-For **Taiji Data Challenge II** users, please make sure to look at Tutorial 5. 
+**Triangle-Simulator** is a prototype time-domain simulator for the data of space-based gravitational wave detectors, which is also the code used to create **Taiji Data Challenge II** (TDC II). 
+For TDC II users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
 Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
+
+## TDC II
+- [The TDC II paper](https://arxiv.org/abs/2505.16500).
+- [TDC II download link (raw data)](https://zenodo.org/records/15469565).
+- [TDC II download link (TDI-combined and downsampled data)](https://zenodo.org/records/15469724).
 
 ## Features
 
@@ -59,7 +64,7 @@ After installation, you can utilize the package modules in your Python scripts o
 ## Data
 
 - **GWData:** contains waveform data used as examples.
-- **OrbitData:** contains the orbit data used by Taiji Data Challenge II.
+- **OrbitData:** contains the orbit data used by TDC II.
 
 **Note:** Ensure that these data directories are present in the root directory after installation, as the Tutorials depend on them for proper functionality.
 
@@ -71,7 +76,6 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ## Reference 
 
-- Taiji Data Challenge II: [the TDC II paper](https://arxiv.org/abs/2505.16500).
 - The modeling of laser interfetormetry is greatly inspired by the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as related research works such as [Phys. Rev. D 107, 083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). In the current version, the lagrange interpolation filter is adapted from the implementation of [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument), and more efficient approaches such as the [22-coefficient cosine-sum kernels](https://arxiv.org/html/2412.14884v1) will be tested in the future versions.   
 - Research on the numerical simulation of drag-free control: 
 
