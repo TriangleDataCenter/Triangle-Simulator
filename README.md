@@ -3,14 +3,14 @@
 
 ## Overview
 
-**Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.
+**Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.  
 For **Taiji Data Challenge II** users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
 Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
 
 ## Features
 
-- **Highly integrated:** The simulation of noises, gravitational wave signals, other instrumental effects and time-delay interferometry processing.
+- **Highly integrated:** the simulation of noises, gravitational wave responses, other instrumental effects and time-delay interferometry processing.
 - **High flexibility:** custom numerial orbits, noise data, gravitational wave waveforms and time-delay interferometry configurations.
 
 ## Getting Started
@@ -58,10 +58,10 @@ After installation, you can utilize the package modules in your Python scripts o
 
 ## Data
 
-- **GWData:** Contains gravitational wave waveform data used as examples.
-- **OrbitData:** Contains the data of numerical orbit.
+- **GWData:** contains waveform data used as examples.
+- **OrbitData:** contains the orbit data used by Taiji Data Challenge II.
 
-**Note:** Ensure that these data directories are present in the root directory after installation, as the package modules depend on them for proper functionality.
+**Note:** Ensure that these data directories are present in the root directory after installation, as the Tutorials depend on them for proper functionality.
 
 ## License
 
