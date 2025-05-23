@@ -8,11 +8,6 @@ For TDC II users, please make sure to look at Tutorial 5.
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
 Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
 
-## TDC II
-- [The TDC II paper](https://arxiv.org/abs/2505.16500).
-- [TDC II download link (raw data)](https://zenodo.org/records/15469565).
-- [TDC II download link (TDI-combined and downsampled data)](https://zenodo.org/records/15469724).
-
 ## Features
 
 - **Highly integrated:** the simulation of noises, gravitational wave responses, other instrumental effects and time-delay interferometry processing.
