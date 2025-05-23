@@ -71,7 +71,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ## Reference 
 
-- Taiji Data Challenge II: [the TDC II paper](TBD), [the TDC II manual](TBD).
+- Taiji Data Challenge II: [the TDC II paper](https://arxiv.org/abs/2505.16500).
 - The modeling of laser interfetormetry is greatly inspired by the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as related research works such as [Phys. Rev. D 107, 083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). In the current version, the lagrange interpolation filter is adapted from the implementation of [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument), and more efficient approaches such as the [22-coefficient cosine-sum kernels](https://arxiv.org/html/2412.14884v1) will be tested in the future versions.   
 - Research on the numerical simulation of drag-free control: 
 
