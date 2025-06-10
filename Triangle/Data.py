@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse
 from scipy.integrate import cumulative_trapezoid
 from scipy.signal import firwin, kaiserord, lfilter
+from collections import UserDict
 import h5py
 
 from Triangle.Constants import *
@@ -64,8 +65,6 @@ def SliceDataDictionary(data_dict, time, time_start, time_end, buffer_time=80, c
 
 
 # ================ methods for general dict =============================
-
-
 def Dict2Array(d, keys=None):
     """
     the generated array must follow the order given by keys
@@ -121,160 +120,188 @@ def MultiplyDicts(dict1, dict2, coef=1.0):
 
 
 # ========================== MOSA/SC dictionary wrapper ============================
-class MOSADict:
+class ObjectDict(UserDict):
+    """A dictionary holding values for object."""
+    _allowed_keys = []
+
+    def __setitem__(self, key, value):
+        if key in self._allowed_keys:
+            super().__setitem__(key, value)
+        else:
+            raise ValueError(str(key) + " is not a supported key.")
+        
+    def __array__(self, dtype=object):
+        return np.array(self.data, dtype=dtype)
+            
+    def __add__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = self[key] + other[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = self[key] + other
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+    
+    def __radd__(self, other):
+        return self.__add__(other)
+    
+    def __mul__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = self[key] * other[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = self[key] * other
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __sub__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = self[key] - other[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = self[key] - other
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+
+    def __rsub__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = other[key] - self[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = other - self[key]
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+        
+    def __neg__(self):
+        return self.__class__({key: -self[key] for key in self.keys()})
+
+    def __truediv__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = self[key] / other[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = self[key] / other
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+
+    def __rtruediv__(self, other):
+        new_dict = {}
+        if isinstance(other, ObjectDict):
+            if self._allowed_keys == other._allowed_keys:
+                for key in self.keys():
+                    new_dict[key] = other[key] / self[key]
+            else:
+                raise ValueError("keys of dictionaries mismatch.")
+        elif np.isscalar(other):
+            for key in self.keys():
+                new_dict[key] = other / self[key]
+        else:
+            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+        return self.__class__(new_dict)
+    
+    def copy(self):
+        if type(self[self._allowed_keys[0]]) is np.ndarray:
+            d = {}
+            for key in self._allowed_keys:
+                d[key] = np.copy(self.data[key])
+            return self.__class__(d)
+        else:
+            return self.__class__(super().copy())
+
+    def integrate(self, fsample):
+        d = {}
+        for k in self.keys():
+            d[k] = cumulative_trapezoid(np.insert(self[k], 0, 0), dx=1 / fsample)
+        return self.__class__(d)
+
+    def derivative(self, fsample):
+        d = {}
+        for k in self.keys():
+            d[k] = np.gradient(self[k], 1 / fsample)
+        return self.__class__(d)
+
+    def downsampled(self, fsample, downsample, kaiser_filter_coef):
+        d = {}
+        for k in self.keys():
+            d[k] = downsampling(self[k], fsample, downsample, kaiser_filter_coef)
+        return self.__class__(d)
+
+    def detrended(self, order=2):
+        d = {}
+        for k in self.keys():
+            d[k] = detrending(self[k], order=order)
+        return self.__class__(d)
+
+    def drop_edge_points(self, points1=0, points2=0):
+        d = {}
+        if points2 == 0:
+            for k in self.keys():
+                d[k] = self[k][points1:]
+        else:
+            for k in self.keys():
+                d[k] = self[k][points1:-points2]
+        return self.__class__(d)
+
+    def get_data_by_idx(self, idx):
+        d = {}
+        for key in self.keys():
+            d[key] = self[key][idx]
+        return self.__class__(d)
+
+class MOSADict(ObjectDict):
     """
     NOTE: be careful when manipulating array or dict elements
     NOTE: use B = A.copy() instead of B = A
     the keys of MOSADict must be MOSA_labels
     the values of MOSADict are numpy arrays of the same dim or scalars
     """
-
-    dict_keys = MOSA_labels
-
-    def __init__(self, data_dict):
-        if isinstance(data_dict, dict):
-            if set(data_dict.keys()) == set(self.dict_keys):
-                self.data = data_dict
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
-        else:
-            raise TypeError("data_dict must be a dict.")
-
-    def __repr__(self):
-        return str(self.data)
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __setitem__(self, key, value):
-        if key in self.dict_keys:
-            self.data[key] = value
-        else:
-            raise ValueError(str(key) + " is not a surpported key.")
-
-    def __add__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] + other.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] + other
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def __mul__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] * other.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] * other
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def __rmul__(self, other):
-        return self.__mul__(other)
-
-    def __sub__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] - other.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] - other
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def __rsub__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other.data[key] - self.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other - self.data[key]
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def __neg__(self):
-        return MOSADict({key: -self.data[key] for key in self.dict_keys})
-
-    def __truediv__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] / other.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] / other
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def __rtruediv__(self, other):
-        if isinstance(other, MOSADict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other.data[key] / self.data[key]
-            return MOSADict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other / self.data[key]
-            return MOSADict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
-
-    def keys(self):
-        return self.data.keys()
-
-    def values(self):
-        return self.data.values()
-
-    def items(self):
-        return self.data.items()
-
-    def copy(self):
-        if type(self.data[MOSA_labels[0]]) is np.ndarray:
-            d = {}
-            for key in MOSA_labels:
-                d[key] = np.copy(self.data[key])
-            return MOSADict(d)
-        else:
-            return MOSADict(self.data.copy())
+    _allowed_keys = MOSA_labels
 
     def reverse(self):
         d = {}
-        for k in MOSA_labels:
+        for k in self.keys():
             k_re = k[1] + k[0]
-            d[k] = self.data[k_re]
+            d[k] = self[k_re]
         return MOSADict(d)
 
     def adjacent(self):
         d = {}
-        for k in MOSA_labels:
+        for k in self.keys():
             k_ad = adjacent_MOSA_labels[k]
-            d[k] = self.data[k_ad]
+            d[k] = self[k_ad]
         return MOSADict(d)
 
     def timedelay(self, fsample, delay, doppler=None, order=31, pool=None):
@@ -286,10 +313,10 @@ class MOSADict:
             if isinstance(doppler, MOSADict):
                 if pool is None:
                     for k in MOSA_labels:
-                        d[k] = timeshift(self.data[k], -delay[k] * fsample, order=order)
+                        d[k] = timeshift(self[k], -delay[k] * fsample, order=order)
                         # d[k] = timeshift(self.data[k], -delay[k] * fsample, order=order) * (1. - doppler[k])
                 else:
-                    param_arr = [(self.data[k], -delay[k] * fsample, order) for k in MOSA_labels]
+                    param_arr = [(self[k], -delay[k] * fsample, order) for k in MOSA_labels]
                     d_arr = pool.starmap(timeshift, param_arr)
                     for j, k in enumerate(MOSA_labels):
                         d[k] = d_arr[j]
@@ -297,9 +324,9 @@ class MOSADict:
             elif doppler is None:
                 if pool is None:
                     for k in MOSA_labels:
-                        d[k] = timeshift(self.data[k], -delay[k] * fsample, order=order)
+                        d[k] = timeshift(self[k], -delay[k] * fsample, order=order)
                 else:
-                    param_arr = [(self.data[k], -delay[k] * fsample, order) for k in MOSA_labels]
+                    param_arr = [(self[k], -delay[k] * fsample, order) for k in MOSA_labels]
                     d_arr = pool.starmap(timeshift, param_arr)
                     for j, k in enumerate(MOSA_labels):
                         d[k] = d_arr[j]
@@ -308,208 +335,16 @@ class MOSADict:
                 raise TypeError("unsurpported doppler type.")
         else:
             raise TypeError("unsurpported delay type.")
-
-    def integrate(self, fsample):
-        d = {}
-        for k in MOSA_labels:
-            d[k] = cumulative_trapezoid(np.insert(self.data[k], 0, 0), dx=1 / fsample)
-        return MOSADict(d)
-
-    def derivative(self, fsample):
-        d = {}
-        for k in MOSA_labels:
-            d[k] = np.gradient(self.data[k], 1 / fsample)
-        return MOSADict(d)
-
-    def downsampled(self, fsample, downsample, kaiser_filter_coef):
-        d = {}
-        for k in MOSA_labels:
-            d[k] = downsampling(self.data[k], fsample, downsample, kaiser_filter_coef)
-        return MOSADict(d)
-
-    def detrended(self, order=2):
-        d = {}
-        for k in MOSA_labels:
-            d[k] = detrending(self.data[k], order=order)
-        return MOSADict(d)
-
-    def drop_edge_points(self, points1=0, points2=0):
-        d = {}
-        if points2 == 0:
-            for k in MOSA_labels:
-                d[k] = self.data[k][points1:]
-        else:
-            for k in MOSA_labels:
-                d[k] = self.data[k][points1:-points2]
-        return MOSADict(d)
-
-    def get_data_by_idx(self, idx):
-        d = {}
-        for key in MOSA_labels:
-            d[key] = self.data[key][idx]
-        return MOSADict(d)
-
-
-class SCDict:
-    """
-    NOTE: be careful when manipulating array or dict elements
-    NOTE: use B = A.copy() instead of B = A
-    the keys of SCDict must be SC_labels
-    the values of SCDict are numpy arrays of the same dim or scalars
-    """
-
-    dict_keys = SC_labels
-
-    def __init__(self, data_dict):
-        if isinstance(data_dict, dict):
-            if set(data_dict.keys()) == set(self.dict_keys):
-                self.data = data_dict
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
-        else:
-            raise TypeError("data_dict must be a dict.")
-
-    def __repr__(self):
-        return str(self.data)
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __setitem__(self, key, value):
-        if key in self.dict_keys:
-            self.data[key] = value
-        else:
-            raise ValueError(str(key) + " is not a surpported key.")
-
-    def __add__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] + other.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] + other
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def __mul__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] * other.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] * other
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def __rmul__(self, other):
-        return self.__mul__(other)
-
-    def __sub__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] - other.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] - other
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def __rsub__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other.data[key] - self.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other - self.data[key]
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def __neg__(self):
-        return SCDict({key: -self.data[key] for key in self.dict_keys})
-
-    def __truediv__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] / other.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = self.data[key] / other
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def __rtruediv__(self, other):
-        if isinstance(other, SCDict):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other.data[key] / self.data[key]
-            return SCDict(new_data)
-        elif np.isscalar(other):
-            new_data = {}
-            for key in self.dict_keys:
-                new_data[key] = other / self.data[key]
-            return SCDict(new_data)
-        else:
-            raise TypeError("Unsupported operation between instances of 'SCDict' and '{}'".format(type(other)))
-
-    def keys(self):
-        return self.data.keys()
-
-    def values(self):
-        return self.data.values()
-
-    def items(self):
-        return self.data.items()
-
-    def copy(self):
-        if type(self.data[SC_labels[0]]) is np.ndarray:
-            d = {}
-            for key in SC_labels:
-                d[key] = np.copy(self.data[key])
-            return SCDict(d)
-        else:
-            return SCDict(self.data.copy())
+    
+class SCDict(ObjectDict):
+    _allowed_keys = SC_labels
 
     def toMOSA(self):
         d = {}
         for key in MOSA_labels:
-            d[key] = self.data[key[0]]
+            d[key] = self[key[0]]
         return MOSADict(d)
-
-    def integrate(self, fsample):
-        d = {}
-        for k in SC_labels:
-            d[k] = cumulative_trapezoid(np.insert(self.data[k], 0, 0), dx=1 / fsample)
-        return SCDict(d)
-
-    def derivative(self, fsample):
-        d = {}
-        for k in SC_labels:
-            d[k] = np.gradient(self.data[k], 1 / fsample)
-        return SCDict(d)
-
+    
     def timedelay(self, fsample, delay, order=31, pool=None):
         """
         delay must be SCDicts
@@ -527,30 +362,7 @@ class SCDict:
             return SCDict(d)
         else:
             raise TypeError("unsurpported delay type.")
-
-    def downsampled(self, fsample, downsample, kaiser_filter_coef):
-        d = {}
-        for k in SC_labels:
-            d[k] = downsampling(self.data[k], fsample, downsample, kaiser_filter_coef)
-        return SCDict(d)
-
-    def detrended(self, order=2):
-        d = {}
-        for k in SC_labels:
-            d[k] = detrending(self.data[k], order=order)
-        return SCDict(d)
-
-    def drop_edge_points(self, points1=0, points2=0):
-        d = {}
-        if points2 == 0:
-            for k in SC_labels:
-                d[k] = self.data[k][points1:]
-        else:
-            for k in SC_labels:
-                d[k] = self.data[k][points1:-points2]
-        return SCDict(d)
-
-
+        
 def assign_noise_for_MOSAs(arrays_or_psds, fsample, size):
     """
     if arrays_or_psds is numpy array or psd function, it will be filled in to a dictionary (arrays are copied)
@@ -835,7 +647,7 @@ def timeshift(data, shifts, order=31):
 
 def store_dict_to_h5(h5parent, dictitem):
     for k, v in dictitem.items():
-        if isinstance(v, dict):
+        if isinstance(v, (dict, UserDict)):
             group = h5parent.create_group(k)
             store_dict_to_h5(group, v)
         else:
