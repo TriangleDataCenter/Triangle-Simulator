@@ -3,14 +3,14 @@
 
 ## Overview
 
-**Triangle-Simulator** is a full-Python prototype simulator for the data of space-based gravitational wave detectors.
-For **Taiji Data Challenge II** users, please make sure to look at Tutorial 5. 
+**Triangle-Simulator** is a prototype time-domain simulator for the data of space-based gravitational wave detectors, which is also the code used to create **Taiji Data Challenge II** (TDC II). 
+For TDC II users, please make sure to look at Tutorial 5. 
 If you are interested how the noises and signals are simulated, Tutorial 4 can serve as a brief guide. 
 Users who are curious about how the raw data look like can refer to Tutorial 1 - 3.    
 
 ## Features
 
-- **Highly integrated:** The simulation of noises, gravitational wave signals, other instrumental effects and time-delay interferometry processing.
+- **Highly integrated:** the simulation of noises, gravitational wave responses, other instrumental effects and time-delay interferometry processing.
 - **High flexibility:** custom numerial orbits, noise data, gravitational wave waveforms and time-delay interferometry configurations.
 
 ## Getting Started
@@ -52,16 +52,14 @@ Users who are curious about how the raw data look like can refer to Tutorial 1 -
 
 ## Usage
 
-### Using the Package
-
 After installation, you can utilize the package modules in your Python scripts or interactive sessions. Demonstrations for the usage of this code can be found at the Tutorial folder.
 
 ## Data
 
-- **GWData:** Contains gravitational wave waveform data used as examples.
-- **OrbitData:** Contains the data of numerical orbit.
+- **GWData:** contains waveform data used as examples.
+- **OrbitData:** contains the orbit data used by TDC II.
 
-**Note:** Ensure that these data directories are present in the root directory after installation, as the package modules depend on them for proper functionality.
+**Note:** Ensure that these data directories are present in the root directory after installation, as the Tutorials depend on them for proper functionality.
 
 ## License
 
@@ -70,8 +68,7 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 <!-- ## Acknowledgements -->
 
 ## Reference 
-
-- Taiji Data Challenge II: [the TDC II paper](https://arxiv.org/abs/2505.16500).
+- [The TDC II paper](https://arxiv.org/abs/2505.16500).
 - The modeling of laser interfetormetry is greatly inspired by the [PhD thesis of O. Hartwig](https://repo.uni-hannover.de/items/4afe8e21-39a1-49a9-a85d-996e1c5dbe30), as well as related research works such as [Phys. Rev. D 107, 083019](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.107.083019). In the current version, the lagrange interpolation filter is adapted from the implementation of [LISAInstrument](https://gitlab.in2p3.fr/lisa-simulation/instrument), and more efficient approaches such as the [22-coefficient cosine-sum kernels](https://arxiv.org/html/2412.14884v1) will be tested in the future versions.   
 - Research on the numerical simulation of drag-free control: 
 
