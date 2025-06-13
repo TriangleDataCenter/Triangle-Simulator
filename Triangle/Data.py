@@ -135,17 +135,14 @@ class ObjectDict(UserDict):
             
     def __add__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = self[key] + other[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = self[key] + other[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = self[key] + other
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
     
     def __radd__(self, other):
@@ -153,17 +150,14 @@ class ObjectDict(UserDict):
     
     def __mul__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = self[key] * other[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = self[key] * other[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = self[key] * other
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
 
     def __rmul__(self, other):
@@ -171,32 +165,26 @@ class ObjectDict(UserDict):
 
     def __sub__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = self[key] - other[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = self[key] - other[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = self[key] - other
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
 
     def __rsub__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = other[key] - self[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = other[key] - self[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = other - self[key]
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
         
     def __neg__(self):
@@ -204,32 +192,26 @@ class ObjectDict(UserDict):
 
     def __truediv__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = self[key] / other[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = self[key] / other[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = self[key] / other
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
 
     def __rtruediv__(self, other):
         new_dict = {}
-        if isinstance(other, ObjectDict):
-            if self._allowed_keys == other._allowed_keys:
-                for key in self.keys():
-                    new_dict[key] = other[key] / self[key]
-            else:
-                raise ValueError("keys of dictionaries mismatch.")
+        if type(self) == type(other):
+            for key in self.keys():
+                new_dict[key] = other[key] / self[key]
         elif np.isscalar(other):
             for key in self.keys():
                 new_dict[key] = other / self[key]
         else:
-            raise TypeError("Unsupported operation between instances of 'MOSADict' and '{}'".format(type(other)))
+            raise TypeError(f"Unsupported operation between '{type(self)}' and '{type(other)}'.")
         return self.__class__(new_dict)
     
     def copy(self):

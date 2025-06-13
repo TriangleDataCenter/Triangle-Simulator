@@ -254,31 +254,7 @@ class TDI:
             logger.debug("Calculating minus path " + minus_paths[i])
             tdi_minus += self.CalculatePath(Path_string=minus_paths[i], eta_dict=eta_dict, doppler=doppler)
         return tdi_plus - tdi_minus
-
-    def CalculateNestedDelay(self, Delay_string, measurement, doppler=True):
-        """
-        calculate nested delay of any measurement
-        """
-        if Delay_string == "":
-            return measurement
-        N_delay = len(Delay_string) - 1
-        delays = []
-        for i in range(N_delay):
-            delays.append(Delay_string[i] + Delay_string[i + 1])
-        total_delay_time = np.zeros(self.size)
-        for i in range(N_delay):
-            delay_idx = delays[i]
-            total_delay_time = total_delay_time - timeshift(
-                self.delays[delay_idx],
-                total_delay_time * self.fsample,
-                order=self.delay_order,
-            )
-        if doppler:
-            total_delay_doppler = np.gradient(total_delay_time, 1.0 / self.fsample)
-            return (1.0 + total_delay_doppler) * timeshift(measurement, total_delay_time * self.fsample, order=self.order)
-        else:
-            return timeshift(measurement, total_delay_time * self.fsample, order=self.order)
-
+    
     def CalculateNestedDelayTime(self, Delay_string):
         """
         calculate the total delay time of a multiple delay operator
@@ -296,6 +272,19 @@ class TDI:
                 order=self.delay_order,
             )
         return total_delay_time
+
+    def CalculateNestedDelay(self, Delay_string, measurement, doppler=True):
+        """
+        calculate nested delay of any measurement
+        """
+        if Delay_string == "":
+            return measurement
+        total_delay_time = self.CalculateNestedDelayTime(Delay_string)
+        if doppler:
+            total_delay_doppler = np.gradient(total_delay_time, 1.0 / self.fsample)
+            return (1.0 + total_delay_doppler) * timeshift(measurement, total_delay_time * self.fsample, order=self.order)
+        else:
+            return timeshift(measurement, total_delay_time * self.fsample, order=self.order)
 
     def CalculateNestedDelayCombination(self, Delay_string_plus, Delay_string_minus, measurement, doppler=True):
         N_plus = len(Delay_string_plus)
