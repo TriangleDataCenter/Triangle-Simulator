@@ -314,9 +314,9 @@ class MOSADict(ObjectDict):
                         d[k] = d_arr[j]
                 return MOSADict(d)
             else:
-                raise TypeError("unsurpported doppler type.")
+                raise TypeError("unsupported doppler type.")
         else:
-            raise TypeError("unsurpported delay type.")
+            raise TypeError("unsupported delay type.")
     
 class SCDict(ObjectDict):
     _allowed_keys = SC_labels
@@ -343,7 +343,7 @@ class SCDict(ObjectDict):
                     d[k] = d_arr[j]
             return SCDict(d)
         else:
-            raise TypeError("unsurpported delay type.")
+            raise TypeError("unsupported delay type.")
         
 def assign_noise_for_MOSAs(arrays_or_psds, fsample, size):
     """
@@ -631,6 +631,7 @@ def store_dict_to_h5(h5parent, dictitem):
     for k, v in dictitem.items():
         if isinstance(v, (dict, UserDict)):
             group = h5parent.create_group(k)
+            group.attrs["type"] = v.__class__.__name__
             store_dict_to_h5(group, v)
         else:
             if isinstance(v, (str, int, float)):
@@ -641,7 +642,15 @@ def store_dict_to_h5(h5parent, dictitem):
 
 
 def read_dict_from_h5(h5parent):
-    result = {}
+    try:
+        type_name = h5parent.attrs["type"]
+        if type_name == "MOSADict":
+            result = MOSADict({})
+        elif type_name == "SCDict":
+            result = SCDict({})
+        else:   result = {}
+    except KeyError:    result = {}
+    
     for k, v in h5parent.items():
         if isinstance(v, h5py.Group):
             result[k] = read_dict_from_h5(v)
