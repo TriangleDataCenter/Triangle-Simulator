@@ -136,6 +136,14 @@ class TDIFly:
         for key in MOSA_labels:
             self.arm_vector_dict[key] = self.xp.array(self.arm_vector_dict[key])
             
+        self.sc_position_vector_dict = {}  # positions of SCs, each item (Nsparse, 3)
+        for key in SC_labels:
+            self.sc_position_vector_dict[key] = self.xp.array(orbit.Positionfunctions()[key](self.sparse_times))
+            
+        self.dij_dict = {}  # delays, each item (Nsparse)
+        for key in MOSA_labels: 
+            self.dij_dict[key] = self.xp.array(orbit.LTTfunctions()[key](self.sparse_times))
+            
         # convert sparse sample times to xp array and calculate its powers 
         self.sparse_times = self.xp.array(self.sparse_times, dtype=self.xp.float64)
         self.sparse_times2 = self.sparse_times ** 2 
@@ -196,7 +204,7 @@ class TDIFlyGB(TDIFly):
             parameters: a dictionary storing the source parameters. Each parameter can be either a numpy array or a float number 
             domain: "time" or "frequency"
         Returns:
-            the time series of TDI responses
+            the time / frequency series of TDI responses
         """
         A = self.xp.atleast_1d(parameters["A"]) # xp array of shape (Nevents)
         f0 = self.xp.atleast_1d(parameters["f0"])
@@ -283,8 +291,8 @@ class TDIFlyGB(TDIFly):
         tdi_responses = [] 
         for ichannel in range(self.Nchannel): 
             # combine the sparse TDI response 
-            # sparse_fasponse = self.xp.zeros((Nevents, self.Nsparse), dtype=self.xp.complex128)
-            sparse_fasponse = self.xp.zeros((Nevents, self.Nsparse+1), dtype=self.xp.complex128)
+            # sparse_response = self.xp.zeros((Nevents, self.Nsparse), dtype=self.xp.complex128)
+            sparse_response = self.xp.zeros((Nevents, self.Nsparse+1), dtype=self.xp.complex128)
             for mosa in MOSA_labels: 
                 if self.Ndelay_dict[ichannel][mosa] == 0: 
                     continue
@@ -299,17 +307,17 @@ class TDIFlyGB(TDIFly):
                         dphi_em = -dphi_GW * d_em + 0.5 * ddphi_GW * d_em ** 2 - 1. / 6. * dddphi_GW * d_em ** 3 
                         dphi_re = -dphi_GW * d_re + 0.5 * ddphi_GW * d_re ** 2 - 1. / 6. * dddphi_GW * d_re ** 3
                         Phase_delay_term += self.delay_factor_dict[ichannel][mosa][Idelay] * (self.EXP(1.j * dphi_em) - self.EXP(1.j * dphi_re))
-                    sparse_fasponse += Denominator_term * Pattern_term * Phase_delay_term
+                    sparse_response += Denominator_term * Pattern_term * Phase_delay_term
 
             # get the amplitude and phase of response 
-            sparse_fasponse_amp = self.xp.abs(sparse_fasponse) # (Nevents, Nsparse)
-            sparse_fasponse_phase = self.xp.unwrap(self.xp.angle(sparse_fasponse)) # unwrap to ensure continuity 
+            sparse_response_amp = self.xp.abs(sparse_response) # (Nevents, Nsparse)
+            sparse_response_phase = self.xp.unwrap(self.xp.angle(sparse_response)) # unwrap to ensure continuity 
             
             if domain == "time":
                 
                 # combine the total sparse amplitude and phase 
-                self.sparse_amp = 2. * A[:, self.NX] * sparse_fasponse_amp # (Nevents, Nsparse)
-                self.sparse_phase = sparse_fasponse_phase + phi_GW # (Nevents, Nsparse)
+                self.sparse_amp = 2. * A[:, self.NX] * sparse_response_amp # (Nevents, Nsparse)
+                self.sparse_phase = sparse_response_phase + phi_GW # (Nevents, Nsparse)
                 
                 # calculate tdi variable at full sampling rate 
                 full_amp = self.vectorized_interp(
@@ -342,8 +350,8 @@ class TDIFlyGB(TDIFly):
             elif domain == "frequency": 
                 
                 # combine the total sparse amplitude and phase 
-                slow_amp = A[:, self.NX] * sparse_fasponse_amp # (Nevents, Nsparse)
-                slow_phase = sparse_fasponse_phase + phi_GW # (Nevents, Nsparse)
+                slow_amp = A[:, self.NX] * sparse_response_amp # (Nevents, Nsparse)
+                slow_phase = sparse_response_phase + phi_GW # (Nevents, Nsparse)
                 heterodyne_phase = slow_phase - carrier_phase # (Nevents, Nsparse)
                 tmp = self.EXP(1.j * heterodyne_phase) * slow_amp # (Nevents, Nsparse)
                 # tdi_f = self.xp.fft.fftshift(self.xp.fft.fft(tmp, axis=-1), axes=-1) * self.sparse_dt # (Nevents, Nsparse)
