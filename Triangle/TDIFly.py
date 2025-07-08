@@ -378,7 +378,22 @@ class TDIFlyGB(TDIFly):
             template[:, start_idx[0]:start_idx[0]+self.Nsparse] = data 
         else: 
             template = self.xp.zeros((Nchannel, Nevents, self.Nfrequency), dtype=self.xp.complex128)
+            # TODO 
         return template
+    
+    def fill_fftseries(self, data, FreqIdx, StartIdx, EndIdx, Nchannel=1, Nevents=1):
+        # TODO validate 
+        template_filled = self.xp.zeros((Nchannel, Nevents, EndIdx + 1 - StartIdx), dtype=self.xp.complex128)
+
+        tmp1 = self.xp.arange(Nchannel)[:, None, None]
+        tmp2 = self.xp.arange(Nevents)[None, :, None]
+        
+        valid_FreqIdx = self.xp.clip(FreqIdx, StartIdx, EndIdx)
+        adjusted_indices = valid_FreqIdx - StartIdx
+        
+        template_filled[tmp1, tmp2, adjusted_indices] = data 
+
+        return template_filled
     
     @staticmethod
     def get_fddot(f, fdot):
