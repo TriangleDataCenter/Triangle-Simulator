@@ -337,14 +337,14 @@ class TDIFlyGB(TDIFly):
                     fp=self.sparse_phase
                     ) # (Nevents, Ntime)
                 
-                if Nevents == 1:
-                    res = self.xp.real(full_amp * self.EXP(1.j * full_phase))[0]
-                    res[:self.drop_points] = 0. 
-                    res[-self.drop_points:] = 0. 
-                else: 
-                    res = self.xp.real(full_amp * self.EXP(1.j * full_phase))
-                    res[:, :self.drop_points] = 0. 
-                    res[:, -self.drop_points:] = 0. 
+                # if Nevents == 1:
+                #     res = self.xp.real(full_amp * self.EXP(1.j * full_phase))[0]
+                #     res[:self.drop_points] = 0. 
+                #     res[-self.drop_points:] = 0. 
+                # else: 
+                res = self.xp.real(full_amp * self.EXP(1.j * full_phase))
+                res[:, :self.drop_points] = 0. 
+                res[:, -self.drop_points:] = 0. 
                 tdi_responses.append(res)
                 
             elif domain == "frequency": 
@@ -358,45 +358,126 @@ class TDIFlyGB(TDIFly):
                 tdi_f = self.xp.fft.fftshift(self.xp.fft.fft(tmp[:, :-1], axis=-1), axes=-1) * self.sparse_dt # (Nevents, Nsparse)
                 
                 
-                if Nevents == 1: 
-                    tdi_responses.append(tdi_f[0])
-                else: 
-                    tdi_responses.append(tdi_f)
+                # if Nevents == 1: 
+                #     tdi_responses.append(tdi_f[0])
+                # else: 
+                tdi_responses.append(tdi_f)
             
             else: 
                 raise ValueError("wrong domain.")
             
-        return self.xp.array(tdi_responses)
+        return self.xp.array(tdi_responses) # (Nchannel, Nevents, Nsparse/Ntime)
     
-    def fill_full_fftseries(self, data, start_idx, Nchannel=1, Nevents=1):
+    def fill_full_fftseries(self, data, start_idx):
         """ 
-            data should be of shape (Nchannel, Nevents, Nfreq) for Nevents > 1 or (Nchannel, Nfreq) for Nevents = 1
+            data should be of shape (Nchannel, Nevents, Nfreq) 
             start_idx should be of shape (Nevents)
         """
-        if Nevents == 1: 
-            template = self.xp.zeros((Nchannel, self.Nfrequency), dtype=self.xp.complex128)
-            template[:, start_idx[0]:start_idx[0]+self.Nsparse] = data 
-        else: 
-            template = self.xp.zeros((Nchannel, Nevents, self.Nfrequency), dtype=self.xp.complex128)
-            # TODO 
+        Nchannel = data.shape[0]
+        Nevents = data.shape[1]
+        template = self.xp.zeros((Nchannel, Nevents, self.Nfrequency), dtype=self.xp.complex128)
+        template[
+            self.xp.arange(Nchannel)[:, None, None], 
+            self.xp.arange(Nevents)[None, :, None], 
+            start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :]
+        ] = data 
         return template
     
-    def fill_fftseries(self, data, FreqIdx, StartIdx, EndIdx, Nchannel=1, Nevents=1):
-        # TODO validate 
-        template_filled = self.xp.zeros((Nchannel, Nevents, EndIdx + 1 - StartIdx), dtype=self.xp.complex128)
-
-        tmp1 = self.xp.arange(Nchannel)[:, None, None]
-        tmp2 = self.xp.arange(Nevents)[None, :, None]
-        
-        valid_FreqIdx = self.xp.clip(FreqIdx, StartIdx, EndIdx)
-        adjusted_indices = valid_FreqIdx - StartIdx
-        
-        template_filled[tmp1, tmp2, adjusted_indices] = data 
-
+    def fill_fftseries(self, data, start_idx, StartBound, EndBound):
+        """ 
+            data should be of shape (Nchannel, Nevents, Nfreq) 
+            start_idx should be of shape (Nevents)
+            StartBound and EndBound are the starting idx and end idx of a slice within the full rfft frequency series 
+        """
+        Nchannel = data.shape[0]
+        Nevents = data.shape[1]
+        template_filled = self.xp.zeros((Nchannel, Nevents, EndBound + 1 - StartBound), dtype=self.xp.complex128)
+        # tmp1 = self.xp.arange(Nchannel)[:, None, None]
+        # tmp2 = self.xp.arange(Nevents)[None, :, None]
+        # valid_start_idx = self.xp.clip(start_idx, StartBound, EndBound)
+        # adjusted_indices = valid_start_idx - StartBound
+        # template_filled[tmp1, tmp2, adjusted_indices] = data 
+        # return template_filled
+        shifted_start_idx = start_idx - StartBound
+        template_filled[
+            self.xp.arange(Nchannel)[:, None, None], 
+            self.xp.arange(Nevents)[None, :, None], 
+            shifted_start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :]
+        ] = data 
         return template_filled
+    
+    def PSD_OMS(self, f, soms=SOMS_nominal, L=L_nominal):
+        u = TWOPI * f * L / C
+        return (u * soms / L) ** 2 * (1.0 + (2e-3 / f) ** 4)
+    
+    def PSD_ACC(self, f, sacc=SACC_nominal, L=L_nominal):
+        u = TWOPI * f * L / C
+        return (sacc * L / u / C**2) ** 2 * (1.0 + (0.4e-3 / f) ** 2) * (1.0 + (f / 8e-3) ** 4)
+    
+    def PSD_X2(self, f, soms=SOMS_nominal, sacc=SACC_nominal, L=L_nominal):
+        u = TWOPI * f * L / C
+        Sa = self.PSD_ACC(f, sacc, L)
+        So = self.PSD_OMS(f, soms, L)
+        return 64.0 * (self.SIN(2. * u)) ** 2 * (self.SIN(u)) ** 2 * (So + (3.0 + self.COS(2. * u)) * Sa)
+
+    def PSD_A2(self, f, soms=SOMS_nominal, sacc=SACC_nominal, L=L_nominal):
+        u = TWOPI * f * L / C
+        Sa = self.PSD_ACC(f, sacc, L)
+        So = self.PSD_OMS(f, soms, L)
+        PSD_A = 8.0 * So * (2.0 + self.COS(u)) * (self.SIN(u)) ** 2 + 16.0 * Sa * (3.0 + 2.0 * self.COS(u) + self.COS(2.0 * u)) * (self.SIN(u)) ** 2
+        return 4.0 * (self.SIN(2. * u)) ** 2 * PSD_A
+
     
     @staticmethod
     def get_fddot(f, fdot):
         return 11.0 / 3.0 * fdot ** 2 / f
-        
+    
+    @staticmethod
+    def get_chirpmass(f0, fdot0): 
+        """   
+        Args: 
+            f0 in [Hz], fdot0 in [Hz/s]
+        Returns: 
+            Mc in [MSUN]
+        """
+        return (fdot0 / f0 ** (11./3.) * 5. * C ** 5 / 96. / PI ** (8./3.)) ** (3./5.) / G / MSUN 
+    
+    @staticmethod
+    def get_D(f0, A, Mc): 
+        """ 
+        Args: 
+            f0 in [Hz], A dimensionless, Mc in [MSUN]
+        Returns: 
+            D in [kpc]
+        """
+        return 2. * (G * Mc * MSUN) ** (5./3.) * (PI * f0) ** (2./3.) / C ** 4 / A / MPC * 1e3 
+
+    @staticmethod    
+    def ParamArr2Dict(parameters): 
+        """ parameters: numpy array of shape (Nevents, Nparams) """
+        param_dict = {
+            'A': np.power(10, parameters[:, 0]),
+            'f0': parameters[:, 1],
+            'fdot0': parameters[:, 2],
+            'phase0': parameters[:, 3],
+            'inclination': np.arccos(parameters[:, 4]),
+            'longitude': parameters[:, 5],
+            'latitude': np.arcsin(parameters[:, 6]),
+            'psi': parameters[:, 7]
+            }
+        return param_dict
+
+    @staticmethod    
+    def ParamDict2Arr(param_dict): 
+        paramters = np.array([
+            np.log10(param_dict["A"]), 
+            param_dict["f0"], 
+            param_dict["fdot0"], 
+            param_dict["phase0"], 
+            np.cos(param_dict["inclination"]), 
+            param_dict["longitude"], 
+            np.sin(param_dict["latitude"]), 
+            param_dict["psi"], 
+        ]).T 
+        return paramters 
 
