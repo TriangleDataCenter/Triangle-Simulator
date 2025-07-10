@@ -13,7 +13,6 @@ from Triangle.Orbit import *
 from Triangle.TDI import *
 
 
-
 class TDIFly:
     
     X2_strings = {
@@ -383,6 +382,23 @@ class TDIFlyGB(TDIFly):
         ] = data 
         return template
     
+    # def fill_fftseries(self, data, start_idx, StartBound, EndBound):
+    #     """ 
+    #         data should be of shape (Nchannel, Nevents, Nfreq) 
+    #         start_idx should be of shape (Nevents)
+    #         StartBound and EndBound are the starting idx and end idx of a slice within the full rfft frequency series 
+    #     """
+    #     Nchannel = data.shape[0]
+    #     Nevents = data.shape[1]
+    #     template_filled = self.xp.zeros((Nchannel, Nevents, EndBound + 1 - StartBound), dtype=self.xp.complex128)
+    #     shifted_start_idx = start_idx - StartBound
+    #     template_filled[
+    #         self.xp.arange(Nchannel)[:, None, None], 
+    #         self.xp.arange(Nevents)[None, :, None], 
+    #         shifted_start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :]
+    #     ] = data 
+    #     return template_filled
+    
     def fill_fftseries(self, data, start_idx, StartBound, EndBound):
         """ 
             data should be of shape (Nchannel, Nevents, Nfreq) 
@@ -392,18 +408,44 @@ class TDIFlyGB(TDIFly):
         Nchannel = data.shape[0]
         Nevents = data.shape[1]
         template_filled = self.xp.zeros((Nchannel, Nevents, EndBound + 1 - StartBound), dtype=self.xp.complex128)
-        # tmp1 = self.xp.arange(Nchannel)[:, None, None]
-        # tmp2 = self.xp.arange(Nevents)[None, :, None]
-        # valid_start_idx = self.xp.clip(start_idx, StartBound, EndBound)
-        # adjusted_indices = valid_start_idx - StartBound
+        # adjusted_indices = self.xp.clip(start_idx, StartBound, EndBound) - StartBound
         # template_filled[tmp1, tmp2, adjusted_indices] = data 
-        # return template_filled
-        shifted_start_idx = start_idx - StartBound
+        # template_filled[
+        #     self.xp.arange(Nchannel)[:, None, None], 
+        #     self.xp.arange(Nevents)[None, :, None], 
+        #     start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :] - StartBound
+        # ] = data 
         template_filled[
             self.xp.arange(Nchannel)[:, None, None], 
             self.xp.arange(Nevents)[None, :, None], 
-            shifted_start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :]
+            self.xp.clip(start_idx[None, :, None] + self.xp.arange(self.Nsparse)[None, None, :], StartBound, EndBound) - StartBound
         ] = data 
+        return template_filled
+
+    def fill_fftseries_loop(self, data, start_idx, StartBound, EndBound):
+        """ 
+            data should be of shape (Nchannel, Nevents, Nfreq) 
+            start_idx should be of shape (Nevents)
+            StartBound and EndBound are the starting idx and end idx of a slice within the full rfft frequency series 
+        """
+        Nchannel = data.shape[0]
+        Nevents = data.shape[1]
+        template_filled = self.xp.zeros((Nchannel, Nevents, EndBound - StartBound + 1), dtype=self.xp.complex128)
+        
+        for ievent in range(Nevents):
+            start_idx_event = start_idx[ievent]
+            
+            if start_idx_event >= StartBound:
+                data_start_idx = 0  
+                temp_start_idx = StartBound - start_idx_event
+            else:
+                data_start_idx = StartBound - start_idx_event
+                temp_start_idx = 0
+
+            data_end_idx = self.Nsparse - 1 if start_idx_event + self.Nsparse - 1 <= EndBound else EndBound - start_idx_event
+            temp_end_idx = temp_start_idx + data_end_idx - data_start_idx 
+
+            template_filled[:, ievent, temp_start_idx:temp_end_idx+1] = data[:, ievent, data_start_idx:data_end_idx+1]      
         return template_filled
     
     def PSD_OMS(self, f, soms=SOMS_nominal, L=L_nominal):
@@ -480,4 +522,3 @@ class TDIFlyGB(TDIFly):
             param_dict["psi"], 
         ]).T 
         return paramters 
-
