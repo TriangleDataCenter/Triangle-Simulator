@@ -12,6 +12,8 @@ from Triangle.Constants import *
 from Triangle.Orbit import *
 from Triangle.TDI import *
 
+import copy 
+
 
 class TDIFly:
     
@@ -42,6 +44,7 @@ class TDIFly:
         self.drop_points = drop_points
         
         # xp functions 
+        self.use_gpu = use_gpu
         if use_gpu:
             self.xp = xp
         else:
@@ -52,6 +55,9 @@ class TDIFly:
         self.SINC = self.xp.sinc
         self.MATMUL = self.xp.matmul
         self.NX = self.xp.newaxis
+        self.SUM = self.xp.sum 
+        self.CONJ = self.xp.conjugate
+        self.RE = self.xp.real
 
         # the orbit functions use numpy array as input
         # self.sparse_times = np.linspace(tcb_times[0], tcb_times[0]+self.Tobs, num=Nsparse, endpoint=False) # (Nsparse) ensure the same Tobs
@@ -337,11 +343,11 @@ class TDIFlyGB(TDIFly):
                     ) # (Nevents, Ntime)
                 
                 # if Nevents == 1:
-                #     res = self.xp.real(full_amp * self.EXP(1.j * full_phase))[0]
+                #     res = self.RE(full_amp * self.EXP(1.j * full_phase))[0]
                 #     res[:self.drop_points] = 0. 
                 #     res[-self.drop_points:] = 0. 
                 # else: 
-                res = self.xp.real(full_amp * self.EXP(1.j * full_phase))
+                res = self.RE(full_amp * self.EXP(1.j * full_phase))
                 res[:, :self.drop_points] = 0. 
                 res[:, -self.drop_points:] = 0. 
                 tdi_responses.append(res)
@@ -468,8 +474,149 @@ class TDIFlyGB(TDIFly):
         So = self.PSD_OMS(f, soms, L)
         PSD_A = 8.0 * So * (2.0 + self.COS(u)) * (self.SIN(u)) ** 2 + 16.0 * Sa * (3.0 + 2.0 * self.COS(u) + self.COS(2.0 * u)) * (self.SIN(u)) ** 2
         return 4.0 * (self.SIN(2. * u)) ** 2 * PSD_A
-
     
+    def mismatch(self, h1, h2):
+        """   
+        Calculate the mismatches between data and multiple templates. The channels must be noise-orthogonal. 
+        Args:
+            h1: (Nchannel, Nfreq)
+            h2: (Nchannel, Nevent, Nfreq)
+        Returns: 
+            mismatches (Nevent)
+        """
+        h2_T =  self.xp.transpose(h2, (1, 0, 2)) # (Nevent, Nchannel, Nfreq)
+        h1h2_inner = self.RE(self.SUM(self.CONJ(h1) * h2_T, axis=(1, 2))) # (Nevent)
+        h1_inner = self.SUM(self.xp.abs(h1) ** 2) # scalar 
+        h2_inner = self.SUM(self.xp.abs(h2_T) ** 2, axis=(1, 2)) # (Nevent)
+        return (1. - h1h2_inner / self.xp.sqrt(h1_inner * h2_inner)) # (Nevent)
+    
+    def SNR(self, h, f0, Tobs): 
+        """   
+        Calculate the SNRs of multiple events. The channel(s) must be A / E or A and E. 
+        Args:
+            h: (Nchannel, Nevent, Nfreq)
+            f0: (Nevent)
+            Tobs: scalar 
+        Returns: 
+            SNR (Nevent)
+        """
+        PSD = self.PSD_A2(f=f0) # (Nevent)
+        return self.xp.sqrt(4. / Tobs / PSD * self.SUM(self.xp.abs(h) ** 2, axis=(0, 2))) # (Nevent)
+    
+    def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S):
+        """  
+        calculate F-statistics for a batch of events within the same frequency bin 
+        Args: 
+            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A / E or A and E 
+            intrinsic_parameters: dictionary of parameters, each item is a numpy array. keys: "f0", "fdot0", "longitude", "latitude"
+            StartBound, EndBound: int, start and end indices of the frequency bin in the whole rfftfreq array 
+            Tobs: float 
+            S: float, noise PSD in the frequnecy bin 
+        Returns: 
+            F-statistics of events 
+        """
+        Nevent = len(intrinsic_parameters["f0"])
+        
+        full_parameters1 = copy.deepcopy(intrinsic_parameters)
+        full_parameters1["A"] = np.ones(Nevent) * 2. 
+        full_parameters1["phase0"] = np.zeros(Nevent)
+        full_parameters1["psi"] = np.zeros(Nevent)
+        full_parameters1["inclination"] = np.ones(Nevent) * PI / 2. 
+        temp1 = self.__call__(parameters=full_parameters1, domain="frequency") # (Nchannel=3, Nevent, Nsparse)
+        temp1 = self.XYZtoAE(temp1)# (Nchannel=2, Nevent, Nsparse)
+        temp_filled1 = self.fill_fftseries(
+            data=temp1, 
+            start_idx=self.start_idx, 
+            StartBound=StartBound, 
+            EndBound=EndBound
+            ) # (Nchannel, Nevent, Nfreq)
+        
+        full_parameters2 = copy.deepcopy(full_parameters1)
+        full_parameters2["psi"] = np.ones(Nevent) * PI / 4. 
+        temp2 = self.__call__(parameters=full_parameters2, domain="frequency") # (Nchannel=3, Nevent, Nsparse)
+        temp2 = self.XYZtoAE(temp2)# (Nchannel=2, Nevent, Nsparse)
+        temp_filled2 = self.fill_fftseries(
+            data=temp2, 
+            start_idx=self.start_idx, 
+            StartBound=StartBound, 
+            EndBound=EndBound
+            ) # (Nchannel, Nevent, Nfreq)
+
+        X1 = self.xp.transpose(temp_filled1, axes=(1, 0, 2)) # (Nevent, Nchannel, Nfreq)
+        X2 = 1.j * X1 # (Nevent, Nchannel, Nfreq)
+        X3 = self.xp.transpose(temp_filled2, axes=(1, 0, 2)) # (Nevent, Nchannel, Nfreq)
+        X4 = 1.j * X3 # (Nevent, Nchannel, Nfreq) 
+        
+        data_conj = self.CONJ(data)
+        Nvector = self.xp.transpose(self.xp.array([
+            self.SUM(self.RE(data_conj * X1), axis=(1, 2)), 
+            self.SUM(self.RE(data_conj * X2), axis=(1, 2)), 
+            self.SUM(self.RE(data_conj * X3), axis=(1, 2)), 
+            self.SUM(self.RE(data_conj * X4), axis=(1, 2)), 
+        ])) * 4. / Tobs / S # (Nevent, 4)
+        
+        M12 = self.SUM(self.RE(X1 * self.CONJ(X2)), axis=(1, 2))
+        M13 = self.SUM(self.RE(X1 * self.CONJ(X3)), axis=(1, 2))
+        M14 = self.SUM(self.RE(X1 * self.CONJ(X4)), axis=(1, 2))
+        M23 = self.SUM(self.RE(X2 * self.CONJ(X3)), axis=(1, 2))
+        M24 = self.SUM(self.RE(X2 * self.CONJ(X4)), axis=(1, 2))
+        M34 = self.SUM(self.RE(X3 * self.CONJ(X4)), axis=(1, 2))
+        Mmatrix = self.xp.transpose(self.xp.array([
+            [self.SUM(self.xp.abs(X1) ** 2, axis=(1, 2)), M12, M13, M14], 
+            [M12, self.SUM(self.xp.abs(X2) ** 2, axis=(1, 2)), M23, M24], 
+            [M13, M23, self.SUM(self.xp.abs(X3) ** 2, axis=(1, 2)), M34], 
+            [M14, M24, M34, self.SUM(self.xp.abs(X4) ** 2, axis=(1, 2))]
+        ]), axes=(2, 0, 1)) * 4. / Tobs / S # (Nevent, 4, 4)
+        
+        invMmatrix = self.xp.linalg.inv(Mmatrix) # (Nevent, 4, 4)
+        
+        Nvector_col = Nvector[..., self.NX] # (Nevent, 4, 1)
+        NM = self.MATMUL(invMmatrix, Nvector_col) # (Nevent, 4, 1)
+        Nvector_row = Nvector[:, self.NX, :] # (Nevent, 1, 4)
+        NMN = self.MATMUL(Nvector_row, NM) # (Nevent, 1, 1)
+        
+        res = 0.5 * NMN[:, 0, 0] # 0.5 * N^T M^{-1} N, (Nevent)
+        if self.use_gpu:
+            return res.get()
+        else: 
+            return res 
+        
+    def Likelihood(self, data, parameters, StartBound, EndBound, Tobs, S):
+        """  
+        calculate the log likelihoods -0.5 ( d - h | d - h) for a batch of events within the same frequency bin 
+        Args: 
+            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A / E or A and E 
+            parameters: dictionary of parameters, each item is a numpy array
+            StartBound, EndBound: int, start and end indices of the frequency bin in the whole rfftfreq array 
+            Tobs: float 
+            S: float, noise PSD in the frequnecy bin 
+        Returns: 
+            loglikes of events 
+        """
+        temp = self.__call__(parameters=parameters, domain="frequency") # (Nchannel=3, Nevent, Nsparse)
+        temp = self.XYZtoAE(temp) # (Nchannel=3, Nevent, Nsparse)
+        temp_filled = self.fill_fftseries(
+            data=temp, 
+            start_idx=self.start_idx, 
+            StartBound=StartBound, 
+            EndBound=EndBound
+            ) # (Nchannel, Nevent, Nfreq)
+        temp_filled = self.xp.transpose(temp_filled, axes=(1, 0, 2)) # (Nevent, Nchannel, Nfreq)
+        # print("shape of filled template:", temp_filled.shape) # TEST 
+
+        residual = data - temp_filled # (Nevent, Nchannel, Nfreq)
+        # print("shape of residual:", residual.shape) # TEST 
+        
+        res = -2. * self.SUM(self.xp.abs(residual) ** 2, axis=(1, 2)) / Tobs / S # (Nevent)
+        if self.use_gpu:
+            return res.get() 
+        else: 
+            return res 
+        
+    def XYZtoAE(self, template_channels): 
+        A, E, _ = AETfromXYZ(template_channels[0], template_channels[1], template_channels[2]) # A / E of shape (Nevent, Nfreq)
+        return self.xp.array([A, E]) # (Nchannel=2, Nevent, Nfreq)
+
     @staticmethod
     def get_fddot(f, fdot):
         return 11.0 / 3.0 * fdot ** 2 / f
@@ -522,3 +669,4 @@ class TDIFlyGB(TDIFly):
             param_dict["psi"], 
         ]).T 
         return paramters 
+    
