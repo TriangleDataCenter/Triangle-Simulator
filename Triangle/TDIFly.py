@@ -503,7 +503,7 @@ class TDIFlyGB(TDIFly):
         PSD = self.PSD_A2(f=f0) # (Nevent)
         return self.xp.sqrt(4. / Tobs / PSD * self.SUM(self.xp.abs(h) ** 2, axis=(0, 2))) # (Nevent)
     
-    def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S):
+    def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S, return_a=False):
         """  
         calculate F-statistics for a batch of events within the same frequency bin 
         Args: 
@@ -576,10 +576,17 @@ class TDIFlyGB(TDIFly):
         NMN = self.MATMUL(Nvector_row, NM) # (Nevent, 1, 1)
         
         res = 0.5 * NMN[:, 0, 0] # 0.5 * N^T M^{-1} N, (Nevent)
-        if self.use_gpu:
-            return res.get()
-        else: 
-            return res 
+        if return_a:
+            res_a = NM.squeeze(axis=-1) # (Nevent, 4)
+            if self.use_gpu:
+                return res.get(), res_a.get()
+            else: 
+                return res, res_a 
+        else:
+            if self.use_gpu:
+                return res.get()
+            else: 
+                return res 
         
     def Likelihood(self, data, parameters, StartBound, EndBound, Tobs, S):
         """  
