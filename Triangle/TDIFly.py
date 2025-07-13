@@ -1,4 +1,5 @@
 import scipy.interpolate as interp 
+import numpy as np 
 try:
     import cupy as xp
     import cupyx.scipy.interpolate as xinterp
@@ -515,7 +516,10 @@ class TDIFlyGB(TDIFly):
         Returns: 
             F-statistics of events 
         """
-        Nevent = len(intrinsic_parameters["f0"])
+        # if isinstance(intrinsic_parameters["f0"], float):
+        #     Nevent = 1 
+        # else:
+        Nevent = len(np.atleast_1d(intrinsic_parameters["f0"]))
         
         full_parameters1 = copy.deepcopy(intrinsic_parameters)
         full_parameters1["A"] = np.ones(Nevent) * 2. 
