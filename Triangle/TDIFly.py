@@ -1,5 +1,5 @@
-import scipy.interpolate as interp 
 import numpy as np 
+import scipy.interpolate as interp 
 try:
     import cupy as xp
     import cupyx.scipy.interpolate as xinterp
@@ -504,7 +504,7 @@ class TDIFlyGB(TDIFly):
         PSD = self.PSD_A2(f=f0) # (Nevent)
         return self.xp.sqrt(4. / Tobs / PSD * self.SUM(self.xp.abs(h) ** 2, axis=(0, 2))) # (Nevent)
     
-    def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S, return_a=False):
+    def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S, return_a=False, return_recovered_wave=False):
         """  
         calculate F-statistics for a batch of events within the same frequency bin 
         Args: 
@@ -518,7 +518,8 @@ class TDIFlyGB(TDIFly):
         """
         # if isinstance(intrinsic_parameters["f0"], float):
         #     Nevent = 1 
-        # else:
+        # else: 
+        #     Nevent = len(intrinsic_parameters["f0"])
         Nevent = len(np.atleast_1d(intrinsic_parameters["f0"]))
         
         full_parameters1 = copy.deepcopy(intrinsic_parameters)
@@ -580,17 +581,27 @@ class TDIFlyGB(TDIFly):
         NMN = self.MATMUL(Nvector_row, NM) # (Nevent, 1, 1)
         
         res = 0.5 * NMN[:, 0, 0] # 0.5 * N^T M^{-1} N, (Nevent)
+        
         if return_a:
             res_a = NM.squeeze(axis=-1) # (Nevent, 4)
             if self.use_gpu:
-                return res.get(), res_a.get()
+                return res_a.get() # (Nevent, 4)
             else: 
-                return res, res_a 
-        else:
-            if self.use_gpu:
-                return res.get()
-            else: 
-                return res 
+                return res_a # (Nevent, 4)
+            
+        if return_recovered_wave: 
+            res_a = NM.squeeze(axis=-1) # (Nevent, 4)
+            res_wf = res_a[:, 0] * self.xp.transpose(X1, axes=(1, 2, 0)) # (Nchannel, Nfreq, Nevent)
+            res_wf += res_a[:, 1] * self.xp.transpose(X2, axes=(1, 2, 0))
+            res_wf += res_a[:, 2] * self.xp.transpose(X3, axes=(1, 2, 0))
+            res_wf += res_a[:, 3] * self.xp.transpose(X4, axes=(1, 2, 0)) 
+            return self.xp.transpose(res_wf, (0, 2, 1)) # (Nchannel, Nevent, Nfreq)
+
+        # else:
+        if self.use_gpu:
+            return res.get() # (Nevent)
+        else: 
+            return res 
         
     def Likelihood(self, data, parameters, StartBound, EndBound, Tobs, S):
         """  
@@ -651,6 +662,29 @@ class TDIFlyGB(TDIFly):
             D in [kpc]
         """
         return 2. * (G * Mc * MSUN) ** (5./3.) * (PI * f0) ** (2./3.) / C ** 4 / A / MPC * 1e3 
+    
+    @staticmethod
+    def a_to_extrinsic(a):
+        """ 
+        Args: 
+            a: (Nevent, 4), numpy array of the a coefficients 
+        Returns: 
+            dictionary of extrinsic parameters 
+        """
+        extrinsic_parameters = dict()
+        
+        P = np.linalg.norm(a, axis=1) ** 2 # (Nevent)
+        Q = a[:, 1] * a[:, 2] - a[:, 0] * a[:, 3] # (Nevent)
+        Delta = np.sqrt(P ** 2 - 4. * Q ** 2) # (Nevent)
+        Aplus = np.sqrt((P + Delta) / 2.) # (Nevent)
+        Across = np.sign(Q) * np.sqrt((P - Delta) / 2.) # (Nevent)
+        
+        extrinsic_parameters["A"] = Aplus + np.sqrt(Aplus ** 2 - Across ** 2) # (Nevent)
+        extrinsic_parameters["inclination"] = np.arccos(Across / extrinsic_parameters["A"]) # (Nevent)
+        extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
+        extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
+        
+        return extrinsic_parameters
 
     @staticmethod    
     def ParamArr2Dict(parameters): 
