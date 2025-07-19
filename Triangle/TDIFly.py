@@ -26,6 +26,9 @@ class TDIFly:
         "32": [],
         "13": [(-1.0, []), (1.0, ["12", "21"]), (1.0, ["12", "21", "13", "31"]), (-1.0, ["13", "31", "12", "21", "12", "21"])],
     }
+    
+    intrinsic_parameter_names = ['f0', 'fdot0', 'longitude', 'latitude']
+    extrinsic_parameter_names = ['A', 'inclination', 'phase0', 'psi']
 
     def __init__(self, orbit, Pstring_list, tcb_times, Nsparse=512, use_gpu=False, drop_points=0):
         """
@@ -684,7 +687,6 @@ class TDIFlyGB(TDIFly):
         # TODO: correct the expressions for phase0 and psi 
         # extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
         # extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
-        
         
         return extrinsic_parameters
 
