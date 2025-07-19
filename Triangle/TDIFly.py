@@ -681,8 +681,10 @@ class TDIFlyGB(TDIFly):
         
         extrinsic_parameters["A"] = Aplus + np.sqrt(Aplus ** 2 - Across ** 2) # (Nevent)
         extrinsic_parameters["inclination"] = np.arccos(Across / extrinsic_parameters["A"]) # (Nevent)
-        extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
-        extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
+        # TODO: correct the expressions for phase0 and psi 
+        # extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
+        # extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
+        
         
         return extrinsic_parameters
 
