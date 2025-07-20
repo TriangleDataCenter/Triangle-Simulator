@@ -27,8 +27,7 @@ class TDIFly:
         "13": [(-1.0, []), (1.0, ["12", "21"]), (1.0, ["12", "21", "13", "31"]), (-1.0, ["13", "31", "12", "21", "12", "21"])],
     }
     
-    intrinsic_parameter_names = ['f0', 'fdot0', 'longitude', 'latitude']
-    extrinsic_parameter_names = ['A', 'inclination', 'phase0', 'psi']
+
 
     def __init__(self, orbit, Pstring_list, tcb_times, Nsparse=512, use_gpu=False, drop_points=0):
         """
@@ -204,6 +203,10 @@ class TDIFly:
     
     
 class TDIFlyGB(TDIFly):
+    
+    intrinsic_parameter_names = ['f0', 'fdot0', 'longitude', 'latitude']
+    extrinsic_parameter_names = ['A', 'inclination', 'phase0', 'psi']
+    
     def __init__(self, orbit, Pstring_list, tcb_times, Nsparse=512, use_gpu=False, drop_points=0):
         super().__init__(orbit, Pstring_list, tcb_times, Nsparse, use_gpu, drop_points)
 
@@ -674,6 +677,7 @@ class TDIFlyGB(TDIFly):
         Returns: 
             dictionary of extrinsic parameters 
         """
+        Nevent = a.shape[0]
         extrinsic_parameters = dict()
         
         P = np.linalg.norm(a, axis=1) ** 2 # (Nevent)
@@ -688,20 +692,45 @@ class TDIFlyGB(TDIFly):
         # extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
         # extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
         
+        if Nevent == 1: 
+            for k, v in extrinsic_parameters.items(): 
+                extrinsic_parameters[k] = v[0]
+                
         return extrinsic_parameters
 
     @staticmethod    
-    def ParamArr2Dict(parameters): 
-        """ parameters: numpy array of shape (Nevents, Nparams) """
+    def IntParamArr2Dict(parameters): 
+        """ parameters: numpy array of shape (Nparams, Nevents) """
         param_dict = {
-            'A': np.power(10, parameters[:, 0]),
-            'f0': parameters[:, 1],
-            'fdot0': parameters[:, 2],
-            'phase0': parameters[:, 3],
-            'inclination': np.arccos(parameters[:, 4]),
-            'longitude': parameters[:, 5],
-            'latitude': np.arcsin(parameters[:, 6]),
-            'psi': parameters[:, 7]
+            'f0': parameters[0],
+            'fdot0': parameters[1],
+            'longitude': parameters[2],
+            'latitude': np.arcsin(parameters[3]),
+            }
+        return param_dict
+
+    @staticmethod    
+    def IntParamDict2Arr(param_dict): 
+        paramters = np.array([
+            param_dict["f0"], 
+            param_dict["fdot0"], 
+            param_dict["longitude"], 
+            np.sin(param_dict["latitude"]), 
+        ])
+        return paramters 
+    
+    @staticmethod    
+    def ParamArr2Dict(parameters): 
+        """ parameters: numpy array of shape (Nparams, Nevents) """
+        param_dict = {
+            'A': np.power(10, parameters[0]),
+            'f0': parameters[1],
+            'fdot0': parameters[2],
+            'phase0': parameters[3],
+            'inclination': np.arccos(parameters[4]),
+            'longitude': parameters[5],
+            'latitude': np.arcsin(parameters[6]),
+            'psi': parameters[7]
             }
         return param_dict
 
@@ -716,6 +745,25 @@ class TDIFlyGB(TDIFly):
             param_dict["longitude"], 
             np.sin(param_dict["latitude"]), 
             param_dict["psi"], 
-        ]).T 
+        ])
         return paramters 
+    
+    @staticmethod
+    def frequency_bandwidth_at_f(f, Tobs): 
+        """ return the unpadded bandwidth """
+        Bmax = TDIFlyGB.frequency_bandwidth_at_f_chirp(f, Tobs) + 2. * TDIFlyGB.frequency_bandwidth_at_f_doppler(f) + 8. / Tobs
+        return 2. * Bmax
+    
+    @staticmethod
+    def frequency_bandwidth_at_f_chirp(f, Tobs): 
+        return 8.055e-7 * f ** (11./3.) * Tobs
+    
+    @staticmethod
+    def frequency_bandwidth_at_f_doppler(f):
+        return 1e-4 * f 
+    
+    @staticmethod
+    def fdot_upper_bound(f): 
+        return 1e-6 * f ** (11./3.)
+        
     
