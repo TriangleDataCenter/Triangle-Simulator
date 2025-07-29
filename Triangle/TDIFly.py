@@ -514,7 +514,7 @@ class TDIFlyGB(TDIFly):
         """  
         calculate F-statistics for a batch of events within the same frequency bin 
         Args: 
-            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A / E or A and E 
+            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A and E 
             intrinsic_parameters: dictionary of parameters, each item is a numpy array. keys: "f0", "fdot0", "longitude", "latitude"
             StartBound, EndBound: int, start and end indices of the frequency bin in the whole rfftfreq array 
             Tobs: float 
@@ -613,7 +613,7 @@ class TDIFlyGB(TDIFly):
         """  
         calculate the log likelihoods -0.5 ( d - h | d - h) for a batch of events within the same frequency bin 
         Args: 
-            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A / E or A and E 
+            data: array of shape (Nchannel, Nfreqs), data in the frequency bin, the channels should be A and E 
             parameters: dictionary of parameters, each item is a numpy array
             StartBound, EndBound: int, start and end indices of the frequency bin in the whole rfftfreq array 
             Tobs: float 
@@ -691,6 +691,16 @@ class TDIFlyGB(TDIFly):
         # TODO: correct the expressions for phase0 and psi 
         # extrinsic_parameters["phase0"] = np.arctan(2. * (a[:, 0] * a[:, 1] + a[:, 2] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 2] ** 2 - a[:, 1] ** 2 - a[:, 3] ** 2)) / 2. # (Nevent), one possible solution 
         # extrinsic_parameters["psi"] = np.arctan(2. * (a[:, 0] * a[:, 2] + a[:, 1] * a[:, 3]) / (a[:, 0] ** 2 + a[:, 1] ** 2 - a[:, 2] ** 2 - a[:, 3] ** 2)) / 4. # (Nevent), one possible solution 
+
+        P = np.sqrt((a[:, 0] + a[:, 3])**2 + (a[:, 1] - a[:, 2])**2)
+        Q = np.sqrt((a[:, 0] - a[:, 3])**2 + (a[:, 1] + a[:, 2])**2)
+        Aplus = P + Q 
+        Across = P - Q 
+        extrinsic_parameters["psi"] = 0.5 * np.arctan2(Aplus*a[:, 3] - Across*a[:, 0], Aplus*a[:, 1] + Across*a[:, 2]) # (Nevent) (-PI/2, PI/2)
+        sgns2p = np.sign(np.sin(2. * extrinsic_parameters["psi"])) # (Nevent)
+        extrinsic_parameters["phase0"] = np.arctan2((Aplus*a[:, 3] - Across*a[:, 0]) * sgns2p, (Aplus*a[:, 2] + Across*a[:, 1]) * sgns2p) # (Nevent) (-PI, PI)
+        extrinsic_parameters["psi"][extrinsic_parameters["psi"]<0.] += PI # (0, PI)
+        extrinsic_parameters["phase0"][extrinsic_parameters["phase0"]<0.] += TWOPI # (0, TWOPI)
         
         if Nevent == 1: 
             for k, v in extrinsic_parameters.items(): 
