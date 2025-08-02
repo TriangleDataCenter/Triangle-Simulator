@@ -497,17 +497,19 @@ class TDIFlyGB(TDIFly):
         h2_inner = self.SUM(self.xp.abs(h2_T) ** 2, axis=(1, 2)) # (Nevent)
         return (1. - h1h2_inner / self.xp.sqrt(h1_inner * h2_inner)) # (Nevent)
     
-    def SNR(self, h, f0, Tobs): 
+    def SNR(self, h, f0, Tobs, PSD=None): 
         """   
         Calculate the SNRs of multiple events. The channel(s) must be A / E or A and E. 
         Args:
             h: (Nchannel, Nevent, Nfreq)
             f0: (Nevent)
             Tobs: scalar 
+            PSD: PSD level, None or float 
         Returns: 
             SNR (Nevent)
         """
-        PSD = self.PSD_A2(f=f0) # (Nevent)
+        if PSD is None:
+            PSD = self.PSD_A2(f=f0) # (Nevent)
         return self.xp.sqrt(4. / Tobs / PSD * self.SUM(self.xp.abs(h) ** 2, axis=(0, 2))) # (Nevent)
     
     def Fstatistics(self, data, intrinsic_parameters, StartBound, EndBound, Tobs, S, return_a=False, return_recovered_wave=False):
