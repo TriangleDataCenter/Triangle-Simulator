@@ -1308,12 +1308,15 @@ class FastMichelsonTDIResponse:
         )
         for key in SC_labels: 
             self.position_vector_dict[key] = self.xp.array(self.position_vector_dict[key]) # each item is a xp array of shape (Ntime, 3)
+        
+        # for tc conversion 
+        self.R0_vector = (self.position_vector_dict["1"] + self.position_vector_dict["2"] + self.position_vector_dict["3"]) / 3. # (Ntime, 3)
 
         self.tcb_times = self.xp.array(self.tcb_times) 
         self.ep_0 = self.xp.array([[1, 0, 0], [0, -1, 0], [0, 0, 0]])
         self.ec_0 = self.xp.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
 
-    def __call__(self, parameters, waveform_generator, optimal_combination=False):
+    def __call__(self, parameters, waveform_generator, optimal_combination=False, tc_at_constellation=False):
         """
         Args:
             parameters: a dictionary storing the source parameters
@@ -1330,6 +1333,14 @@ class FastMichelsonTDIResponse:
         p = parameters["psi"]
 
         wave_vector = -self.xp.array([self.COS(l) * self.COS(b), self.SIN(l) * self.COS(b), self.SIN(b)])  # (3)
+        
+        if tc_at_constellation: 
+            tc_constel = parameters["coalescence_time"] * DAY 
+            R0x_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 0]) # scalar
+            R0y_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 1])
+            R0z_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 2])
+            R0_coal = self.xp.array([R0x_coal, R0y_coal, R0z_coal]) # (3)
+            parameters["coalescence_time"] += - self.xp.dot(wave_vector, R0_coal) / C / DAY 
 
         O = self.xp.zeros((3, 3))
         O[0][0] = self.SIN(l) * self.COS(p) - self.COS(l) * self.SIN(b) * self.SIN(p)
