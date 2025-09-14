@@ -817,6 +817,14 @@ class TDISensitivity:
     """
     calculate sensitivity for given orbit configuration and TDI scheme
     """
+    X2_string = {
+        "12": [(1.0, []), (-1.0, ["13", "31"]), (-1.0, ["13", "31", "12", "21"]), (1.0, ["12", "21", "13", "31", "13", "31"])],
+        "23": [],
+        "31": [(-1.0, ["13"]), (1.0, ["12", "21", "13"]), (1.0, ["12", "21", "13", "31", "13"]), (-1.0, ["13", "31", "12", "21", "12", "21", "13"])],
+        "21": [(1.0, ["12"]), (-1.0, ["13", "31", "12"]), (-1.0, ["13", "31", "12", "21", "12"]), (1.0, ["12", "21", "13", "31", "13", "31", "12"])],
+        "32": [],
+        "13": [(-1.0, []), (1.0, ["12", "21"]), (1.0, ["12", "21", "13", "31"]), (-1.0, ["13", "31", "12", "21", "12", "21"])],
+    }
 
     def __init__(self, Ri, nij, dij, L=L_nominal, S_OMS=SOMS_nominal, S_ACC=SACC_nominal):
         """
@@ -1023,3 +1031,154 @@ class TDISensitivity:
             return np.real(CSD)
         else:
             return CSD
+        
+        
+class MultiChannelSensitivity(TDISensitivity):
+    def __init__(self, Ri, nij, dij, L=..., S_OMS=..., S_ACC=...):
+        super().__init__(Ri, nij, dij, L, S_OMS, S_ACC)
+        
+    def TDI_response_function_plus_cross(self, lam, beta, f, P_ij=None, P_ij_strings=None):
+        """
+        calculate R from P_ij or the strings representing P_ij.
+        """
+        if P_ij is None:
+            P_ij = self.TDI_P_ij(P_ij_strings=P_ij_strings, f=f)  # mosa, (Nf,)
+
+        k = self.wave_vector(lam=lam, beta=beta)  # (3,)
+        ep, ec = self.polar_basis(lam=lam, beta=beta)  # (3, 3)
+        PreFactor = self.Prefactor_ij(f=f)  # mosa, (Nf,)
+        ExpFactor = self.Exp_ij(k=k, f=f)  # mosa, (Nf,)
+        SincFactor = self.Sinc_ij(k=k, f=f)  # mosa, (Nf,)
+        Fp, Fc = self.PatternFunction_ij(ep=ep, ec=ec)  # mosa, scalar
+
+        R2p = np.zeros_like(f, dtype=np.complex128)
+        R2c = np.zeros_like(f, dtype=np.complex128)
+        for key in MOSA_labels:
+            tmp = P_ij[key] * PreFactor[key] * ExpFactor[key] * SincFactor[key]
+            R2p += tmp * Fp[key]
+            R2c += tmp * Fc[key]
+        return R2p, R2c # T^+, T^x
+    
+    def sensitivity_three_channels(self, f, Nsource=2**10, combination="XYZ"):
+        """ return total sensitivity in the PSD unit (1/Hz) """
+        
+        # specify TDI channels 
+        if combination == "XYZ": 
+            X2_string = self.X2_string
+            Y2_string = TDIStringManipulation.TDIStringCyc(X2_string)
+            Z2_string = TDIStringManipulation.TDIStringCyc(Y2_string)
+            
+        elif combination == "AET": 
+            X2_string, Y2_string, Z2_string = TDIStringManipulation.AETStringsfromXString(self.X2_string) # XYZ for AET 
+            
+        else: 
+            raise ValueError("Combination not implemented.")
+        X2_operator = self.TDI_P_ij(X2_string, f)
+        Y2_operator = self.TDI_P_ij(Y2_string, f)
+        Z2_operator = self.TDI_P_ij(Z2_string, f)
+
+        # calculate covariance matrix 
+        Cxx = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=X2_operator, 
+            Q_ij=X2_operator, 
+            return_PSD=True 
+        ) # C_XX*
+
+        Cxy = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=Y2_operator, 
+            Q_ij=X2_operator, 
+        ) # C_XY*
+
+        Cxz = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=Z2_operator, 
+            Q_ij=X2_operator, 
+        ) # C_XZ*
+
+        Cyx = np.conjugate(Cxy) # C_YX*
+
+        Cyy = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=Y2_operator, 
+            Q_ij=Y2_operator, 
+            return_PSD=True 
+        ) # C_YY*
+
+        Cyz = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=Z2_operator, 
+            Q_ij=Y2_operator, 
+        ) # C_YZ*
+
+        Czx = np.conjugate(Cxz)
+
+        Czy = np.conjugate(Cyz)
+
+        Czz = self.TDI_noise_CSD(
+            f=f, 
+            P_ij=Z2_operator, 
+            Q_ij=Z2_operator, 
+            return_PSD=True 
+        ) # C_ZZ*
+
+        CovMatrix = np.array([
+            [Cxx, Cxy, Cxz], 
+            [Cyx, Cyy, Cyz], 
+            [Czx, Czy, Czz],
+        ]) # no 1/(4 Delta_f) factor, (3, 3, Nf)
+        InvCovMatrix = np.linalg.inv(np.transpose(CovMatrix, axes=(2, 0, 1))) # (Nf, 3, 3)
+
+        # calculate responses of multiple sourses 
+        lon_arr = np.random.uniform(0, TWOPI, Nsource)
+        lat_arr = np.arcsin(np.random.uniform(-1, 1, Nsource))
+
+        X2_Response_plus = []
+        X2_Response_cross = []
+        for isource in tqdm(range(Nsource)):
+            longitude = lon_arr[isource]
+            latitude = lat_arr[isource]
+            tmp_plus, tmp_cross = self.TDI_response_function_plus_cross(lam=longitude, beta=latitude, f=f, P_ij=X2_operator) # 1/2 * (|T+|^2+|Tx|^2)
+            X2_Response_plus.append(tmp_plus) # T^+ 
+            X2_Response_cross.append(tmp_cross) # T^x 
+        X2_Response_plus = np.array(X2_Response_plus)  # (Nsource, Nf)
+        X2_Response_cross = np.array(X2_Response_cross)
+
+        Y2_Response_plus = []
+        Y2_Response_cross = []
+        for isource in tqdm(range(Nsource)):
+            longitude = lon_arr[isource]
+            latitude = lat_arr[isource]
+            tmp_plus, tmp_cross = self.TDI_response_function_plus_cross(lam=longitude, beta=latitude, f=f, P_ij=Y2_operator) # 1/2 * (|T+|^2+|Tx|^2)
+            Y2_Response_plus.append(tmp_plus) # T^+ 
+            Y2_Response_cross.append(tmp_cross) # T^x 
+        Y2_Response_plus = np.array(Y2_Response_plus)  # (Nsource, Nf)
+        Y2_Response_cross = np.array(Y2_Response_cross)
+
+        Z2_Response_plus = []
+        Z2_Response_cross = []
+        for isource in tqdm(range(Nsource)):
+            longitude = lon_arr[isource]
+            latitude = lat_arr[isource]
+            tmp_plus, tmp_cross = self.TDI_response_function_plus_cross(lam=longitude, beta=latitude, f=f, P_ij=Z2_operator) # 1/2 * (|T+|^2+|Tx|^2)
+            Z2_Response_plus.append(tmp_plus) # T^+ 
+            Z2_Response_cross.append(tmp_cross) # T^x 
+        Z2_Response_plus = np.array(Z2_Response_plus)  # (Nsource, Nf)
+        Z2_Response_cross = np.array(Z2_Response_cross)
+        
+        response_plus_vector = np.transpose(np.array([X2_Response_plus, Y2_Response_plus, Z2_Response_plus]), axes=(1, 2, 0)) # (Nsource, Nf, 3)
+        response_cross_vector = np.transpose(np.array([X2_Response_cross, Y2_Response_cross, Z2_Response_cross]), axes=(1, 2, 0)) 
+        
+        
+        sens_plus = np.matmul(np.conjugate(response_plus_vector)[:, :, np.newaxis, :], InvCovMatrix[np.newaxis, :, :, :])[:, :, 0, :] # Ns, Nf, 0, 3 * 0, Nf, 3, 3 -> Ns, Nf, 3
+        sens_plus = np.mean(np.real(np.sum(sens_plus * response_plus_vector, axis=2)), axis=0) # Ns, Nf, 3 * Ns, Nf, 3 -> Nf 
+        sens_cross = np.matmul(np.conjugate(response_cross_vector)[:, :, np.newaxis, :], InvCovMatrix[np.newaxis, :, :, :])[:, :, 0, :] # Ns, Nf, 0, 3 * 0, Nf, 3, 3 -> Ns, Nf, 3
+        sens_cross = np.mean(np.real(np.sum(sens_cross * response_cross_vector, axis=2)), axis=0) # Ns, Nf, 3 * Ns, Nf, 3 -> Nf 
+        sens_total = 1. / (0.5 * (sens_plus + sens_cross))
+        
+        return sens_total
+
+        
+        
+        
