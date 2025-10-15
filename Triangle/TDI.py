@@ -965,6 +965,23 @@ class TDISensitivity:
             total_noise += noise_oms_ij[key] * PSDOMS + noise_acc_ij[key] * PSDACC  # (Nf)
         return total_noise
 
+    def TDI_average_response(self, f, P_ij=None, P_ij_strings=None, Nsource=1024):
+        """Calculate average response from Pij or Pij strings. 
+        The response function is averaged over N sources in 
+        random directions.
+        """
+        if P_ij is None:
+            P_ij = self.TDI_P_ij(P_ij_strings=P_ij_strings, f=f)
+
+        response_arr = []
+        for _ in tqdm(range(Nsource)):
+            longitude = np.random.uniform(0, TWOPI)
+            latitude = np.arcsin(np.random.uniform(-1, 1))
+            response_arr.append(self.TDI_response_function(lam=longitude, beta=latitude, f=f, P_ij=P_ij))
+        response_arr = np.array(response_arr)  # (Nsource, Nf)
+        response_avg = np.mean(response_arr, axis=0)  # (Nf)
+        return response_avg
+
     def TDI_sensitivity(self, f, P_ij=None, P_ij_strings=None, Nsource=1024):
         """
         calculate sensitivity from Pij or the Pij strings. the response funciton is averaged over N sources in random directions.
@@ -977,16 +994,9 @@ class TDISensitivity:
         PSD = self.TDI_noise(f=f, P_ij=P_ij)  # (Nf)
 
         # calculate the average response function
-        Response_arr = []
-        for _ in tqdm(range(Nsource)):
-            longitude = np.random.uniform(0, TWOPI)
-            latitude = np.arcsin(np.random.uniform(-1, 1))
-            Response_arr.append(self.TDI_response_function(lam=longitude, beta=latitude, f=f, P_ij=P_ij))
-        Response_arr = np.array(Response_arr)  # (Nsource, Nf)
-        Response_avg = np.mean(Response_arr, axis=0)  # (Nf)
-
+        response_avg = self.TDI_average_response(f, P_ij, Nsource=Nsource)
         # return sensitivity
-        return PSD / Response_avg
+        return PSD / response_avg
 
     def TDI_noise_CSD(self, f, P_ij=None, Q_ij=None, P_ij_strings=None, Q_ij_strings=None, return_PSD=False):
         """calculate the noise CSD of channel P and Q, i.e. 2/T <P^* Q>, reduce to PSD if P = Q"""
