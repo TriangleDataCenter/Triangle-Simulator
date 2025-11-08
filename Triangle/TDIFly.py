@@ -214,7 +214,8 @@ class TDIFlyGB(TDIFly):
         """
         Args:
             parameters: a dictionary storing the source parameters. Each parameter can be either a numpy array or a float number 
-            domain: "time" or "frequency"
+            domain: "time" or "frequency", 
+            **NOTE** the frequency-domain calculation is consistent with rfft of time-domain waveform, both of them should not multiply the Fourier time shift factor 
         Returns:
             the time / frequency series of TDI responses
         """
