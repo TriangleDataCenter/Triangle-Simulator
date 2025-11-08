@@ -647,6 +647,10 @@ class TDIFlyGB(TDIFly):
     def XYZtoAE(self, template_channels): 
         A, E, _ = AETfromXYZ(template_channels[0], template_channels[1], template_channels[2]) # A / E of shape (Nevent, Nfreq)
         return self.xp.array([A, E]) # (Nchannel=2, Nevent, Nfreq)
+    
+    def XYZtoAET(self, template_channels): 
+        A, E, T = AETfromXYZ(template_channels[0], template_channels[1], template_channels[2]) # A / E/ T of shape (Nevent, Nfreq)
+        return self.xp.array([A, E, T]) # (Nchannel=3, Nevent, Nfreq)
 
     @staticmethod
     def get_fddot(f, fdot):
