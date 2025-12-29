@@ -1106,7 +1106,10 @@ class GeneralTDIResponse:
         # calculate wave vector and polar bases using the extrinsic parameters
         l = parameters["longitude"]
         b = parameters["latitude"]
-        p = parameters["psi"]
+        if "psi" in parameters: 
+            p = parameters["psi"]
+        else: 
+            p = 0. # waveforms such as FastEMRIWaveform do not have the polarization parameter 
 
         wave_vector = -self.xp.array([self.xp.cos(l) * self.xp.cos(b), self.xp.sin(l) * self.xp.cos(b), self.xp.sin(b)])  # (3)
 
@@ -1330,7 +1333,10 @@ class FastMichelsonTDIResponse:
         # calculate wave vector and polar bases using the extrinsic parameters
         l = parameters["longitude"]
         b = parameters["latitude"]
-        p = parameters["psi"]
+        if "psi" in parameters: 
+            p = parameters["psi"]
+        else: 
+            p = 0. # waveforms such as FastEMRIWaveform do not have the polarization parameter 
 
         wave_vector = -self.xp.array([self.COS(l) * self.COS(b), self.SIN(l) * self.COS(b), self.SIN(b)])  # (3)
         
