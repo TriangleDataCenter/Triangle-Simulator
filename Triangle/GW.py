@@ -1319,7 +1319,7 @@ class FastMichelsonTDIResponse:
         self.ep_0 = self.xp.array([[1, 0, 0], [0, -1, 0], [0, 0, 0]])
         self.ec_0 = self.xp.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
 
-    def __call__(self, parameters, waveform_generator, optimal_combination=False, tc_at_constellation=False):
+    def __call__(self, parameters, waveform_generator, optimal_combination=False, tc_at_constellation=False, **wf_kwargs):
         """
         Args:
             parameters: a dictionary storing the source parameters
@@ -1363,7 +1363,7 @@ class FastMichelsonTDIResponse:
         e_c = self.xp.dot(self.xp.dot(O, self.ec_0), OT)  # (3, 3)
 
         # calculate fiducial waveforms at tcb_times, and the delayed ones will be obtained via interpolation
-        times_interp, hphc0 = self.waveform_generator(parameters, self.tcb_times)  # times_interp does not has to be the same as tcb_times, it only acts as the x value of interpolation
+        times_interp, hphc0 = self.waveform_generator(parameters, self.tcb_times, **wf_kwargs)  # times_interp does not has to be the same as tcb_times, it only acts as the x value of interpolation
 
         # calculate pattern function 
         Fp12 = self.xp.sum(self.MATMUL(self.arm_vector_dict["12"], e_p) * self.arm_vector_dict["12"], axis=1)  # Fp12=Fp21 (Ntime)
