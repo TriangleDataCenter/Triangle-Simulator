@@ -1402,24 +1402,25 @@ class FastMichelsonTDIResponse:
             the time series of TDI responses XYZ (optimal_combination=False) or AET (optimal_combination=True), shape is (3, Nt) 
         """
         self.waveform_generator = waveform_generator
+        parameters_in = parameters.copy() 
 
         # calculate wave vector and polar bases using the extrinsic parameters
-        l = parameters["longitude"]
-        b = parameters["latitude"]
-        if "psi" in parameters: 
-            p = parameters["psi"]
+        l = parameters_in["longitude"]
+        b = parameters_in["latitude"]
+        if "psi" in parameters_in: 
+            p = parameters_in["psi"]
         else: 
             p = 0. # waveforms such as FastEMRIWaveform do not have the polarization parameter 
 
         wave_vector = -self.xp.array([self.COS(l) * self.COS(b), self.SIN(l) * self.COS(b), self.SIN(b)])  # (3)
         
         if tc_at_constellation: 
-            tc_constel = parameters["coalescence_time"] * DAY 
+            tc_constel = parameters_in["coalescence_time"] * DAY 
             R0x_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 0]) # scalar
             R0y_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 1])
             R0z_coal = self.xp.interp(x=tc_constel, xp=self.tcb_times, fp=self.R0_vector[:, 2])
             R0_coal = self.xp.array([R0x_coal, R0y_coal, R0z_coal]) # (3)
-            parameters["coalescence_time"] += - self.xp.dot(wave_vector, R0_coal) / C / DAY 
+            parameters_in["coalescence_time"] += - self.xp.dot(wave_vector, R0_coal) / C / DAY 
 
         O = self.xp.zeros((3, 3))
         O[0][0] = self.SIN(l) * self.COS(p) - self.COS(l) * self.SIN(b) * self.SIN(p)
@@ -1436,7 +1437,7 @@ class FastMichelsonTDIResponse:
         e_c = self.xp.dot(self.xp.dot(O, self.ec_0), OT)  # (3, 3)
 
         # calculate fiducial waveforms at tcb_times, and the delayed ones will be obtained via interpolation
-        times_interp, hphc0 = self.waveform_generator(parameters, self.tcb_times, **wf_kwargs)  # times_interp does not has to be the same as tcb_times, it only acts as the x value of interpolation
+        times_interp, hphc0 = self.waveform_generator(parameters_in, self.tcb_times, **wf_kwargs)  # times_interp does not has to be the same as tcb_times, it only acts as the x value of interpolation
 
         # calculate pattern function 
         Fp12 = self.xp.sum(self.MATMUL(self.arm_vector_dict["12"], e_p) * self.arm_vector_dict["12"], axis=1)  # Fp12=Fp21 (Ntime)
