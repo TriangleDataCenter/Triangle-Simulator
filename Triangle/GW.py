@@ -721,10 +721,10 @@ try:
     from phenomxpy.utils import MasstoSecond, SecondtoMass, AmpNRtoSI, AmpSItoNR, ModeToString, SpinWeightedSphericalHarmonic
     from phenomxpy.fft import SimInspiralChirpStartFrequencyBound
 except ImportError:
-    pass 
+    print("No phenomxpy.")
     
 class MBHB_Injection_PhenT:
-    def __init__(self, mode="primary", internal_time=False, use_gpu=False):
+    def __init__(self, mode="primary", use_gpu=False):
         if mode=="primary":
             self.mode_array = [[2,2],[2,-2]]
             self.max_m = 2. 
@@ -733,26 +733,39 @@ class MBHB_Injection_PhenT:
             self.max_m = 5. 
         else: 
             raise ValueError("mode not supported.")
-        self.internal_time = internal_time
+        
         self.use_gpu=use_gpu
+        if self.use_gpu:
+            self.xp = xp 
+        else: 
+            self.xp = np 
 
-    def __call__(self, parameters, times):
-        # convert parameters 
+    def __call__(self, parameters, times, f_lower=None, f_ref=None, use_internal_time=True):
+        
+        # convert input parameters to the parameters supported by phenomT
         m1 = m1_Mc_q(parameters["chirp_mass"], parameters["mass_ratio"]) # in MSUN 
         m2 = m1 * parameters["mass_ratio"] # in MSUN 
         M = m1 + m2 # in MSUN 
-        Tobs = times[-1] - times[0]
-        buffered_Tobs_SI = 1.2 * Tobs 
-        f_lower_SI = max(5e-5, SimInspiralChirpStartFrequencyBound(tchirp=buffered_Tobs_SI, m1=m1*MSUN, m2=m2*MSUN))
-        self.wf_dt=10. * parameters["chirp_mass"] / 1e6 * 5. / self.max_m 
+        eta = eta_q(parameters["mass_ratio"]) # dimensionless
+        
+        # set time series 
+        if f_lower is None:
+            Tobs = times[-1] - times[0] # in second
+            buffered_Tobs_SI = 1.2 * Tobs 
+            # f_lower = max(5e-5, SimInspiralChirpStartFrequencyBound(tchirp=buffered_Tobs_SI, m1=m1*MSUN, m2=m2*MSUN))
+            f_lower = SimInspiralChirpStartFrequencyBound(tchirp=buffered_Tobs_SI, m1=m1*MSUN, m2=m2*MSUN)
+        # wf_dt = parameters["chirp_mass"] * 1e-4 / self.max_m # an empirical setup of time step
+        wf_dt = parameters["chirp_mass"] * 2e-5 # an empirical setup of time step
+        
+        # set waveform parameters
         wf_params = dict(
-            delta_t_sec = self.wf_dt, 
+            delta_t_sec = wf_dt, 
+            f_lower=f_lower, 
             total_mass=M, 
-            f_lower=f_lower_SI, 
-            eta=eta_q(parameters["mass_ratio"]), 
+            eta=eta, 
             s1=[0., 0., parameters["spin_1z"]], 
             s2=[0., 0., parameters["spin_2z"]], 
-            f_ref=None # i.e. f_ref = f_lower 
+            f_ref=f_ref # if None, then f_ref = f_lower 
         )
             
         # initialize phenomT waveform 
@@ -764,36 +777,96 @@ class MBHB_Injection_PhenT:
             )
         
         # calculate polarizations 
-        if self.internal_time:
-            self.wf_times_SI = MasstoSecond(phenT.times, M) + parameters["coalescence_time"] * DAY
-            self.hp, self.hc = phenT.compute_polarizations(
+        if use_internal_time:
+            # the internal time of PhenT sets max amplitude at t=0
+            wf_times_SI = MasstoSecond(phenT.times, M) + parameters["coalescence_time"] * DAY
+            return_time_idx = self.xp.where(wf_times_SI>=0.)[0]
+            wf_times_SI = wf_times_SI[return_time_idx] # only keep times after t=0
+            hp, hc = phenT.compute_polarizations(
                 inclination=parameters["inclination"], 
-                phiRef=parameters["coalescence_phase"], 
-                times=None, 
+                phiRef=parameters["coalescence_phase"], # at f_ref, not at coalescence if f_ref != f_coal 
+                # times=None, 
+                times=phenT.times[return_time_idx], # only keep times after t=0
                 distance=parameters["luminosity_distance"], 
                 total_mass=M, 
             )
         else: 
-            self.wf_times_SI = times 
-            self.hp, self.hc = phenT.compute_polarizations(
+            wf_times_SI = times 
+            hp, hc = phenT.compute_polarizations(
                 inclination=parameters["inclination"], 
-                phiRef=parameters["coalescence_phase"], 
+                phiRef=parameters["coalescence_phase"], # at f_ref, not at coalescence if f_ref != f_coal 
                 times=SecondtoMass(times - parameters["coalescence_time"] * DAY, M), 
                 distance=parameters["luminosity_distance"], 
                 total_mass=M, 
             )
-        # print("number of time points:", len(wf_times_SI))
 
-        return self.wf_times_SI, self.hp + 1.0j * self.hc 
+        return wf_times_SI, hp + 1.0j * hc 
+    
+    def get_f_lower_f_coal(self, parameters, times): 
+
+        # convert input parameters to the parameters supported by phenomT
+        m1 = m1_Mc_q(parameters["chirp_mass"], parameters["mass_ratio"]) # in MSUN 
+        m2 = m1 * parameters["mass_ratio"] # in MSUN 
+        M = m1 + m2 # in MSUN 
+        eta = eta_q(parameters["mass_ratio"]) # dimensionless
+        
+        # set time series
+        Tobs = times[-1] - times[0] # in second
+        buffered_Tobs_SI = 1.2 * Tobs 
+        # f_lower = max(5e-5, SimInspiralChirpStartFrequencyBound(tchirp=buffered_Tobs_SI, m1=m1*MSUN, m2=m2*MSUN))
+        f_lower = SimInspiralChirpStartFrequencyBound(tchirp=buffered_Tobs_SI, m1=m1*MSUN, m2=m2*MSUN)
+        wf_dt = parameters["chirp_mass"] * 2e-5
+        
+        # set waveform parameters
+        wf_params = dict(
+            delta_t_sec = wf_dt, 
+            f_lower=f_lower, 
+            total_mass=M, 
+            eta=eta, 
+            s1=[0., 0., parameters["spin_1z"]], 
+            s2=[0., 0., parameters["spin_2z"]], 
+            f_ref=None # if None, then f_ref = f_lower 
+        )
+            
+        # initialize phenomT waveform 
+        phenT = PhenomTHM(
+            **wf_params, 
+            mode_array=[[2,2],[2,-2]], # only 22 mode is used to estimate f_coal
+            cuda=self.use_gpu, 
+            numba_ansatzaes=False, 
+            )
+        
+        # calculate polarizations in the time domain 
+        hp, hc = phenT.compute_polarizations(
+            inclination=0., 
+            phiRef=0., 
+            times=None, 
+            distance=1000., 
+            total_mass=M, 
+        )
+
+        if self.use_gpu: 
+            hp = hp.get() 
+            hc = hc.get()
+
+        f, hpf = FFT_window(
+            data_array=hp, 
+            fsample=1./wf_dt, 
+        )
+        _, hcf = FFT_window(
+            data_array=hc, 
+            fsample=1./wf_dt,
+        )
+        
+        idx_coal = np.argmax(np.sqrt(np.abs(hpf) ** 2 + np.abs(hcf) ** 2) * f ** 2) # coalesence is defined at max f^2 * |h(f)|
+        f_coal = f[idx_coal]
+        return f_lower, f_coal
 
 
 try:
     from pyseobnr.generate_waveform import GenerateWaveform, generate_modes_opt
-
-    # print("Has pyseobnr")
 except ImportError:
-    # print("No pyseobnr")
-    pass
+    print("No pyseobnr.")
 
 
 class MBHB_v5_Injection:
