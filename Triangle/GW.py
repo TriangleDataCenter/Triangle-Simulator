@@ -690,6 +690,7 @@ class MBHB_Injection:
         if self.buffer:  # the buffered f_lower is at least 1.5 times lower
             f_lower = min(f_lower * 2.0 / m_max, f_lower / 1.5)
         f_lower = max(f_lower, 1e-5)  # set a lower limit of 1e-5 Hz
+        self.f_lower = f_lower # store f_lower in SI 
         f_lower *= mass_scale  # get rescaled lower frequency
         if self.verbose == 1:
             print("minimum frequency before rescale:", f_lower / mass_scale)
