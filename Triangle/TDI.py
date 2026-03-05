@@ -626,20 +626,20 @@ class TDI:
         for key in MOSA_labels:
             TDIContributer_ij = np.zeros(Nt)
             for prefactor, DStrings in PStrings[key]:
-                delayed_eta_ij = eta[key]
+                delayed_eta_ij = eta[key].copy() 
                 for DString in DStrings[::-1]:
                     if DString[0] == "-":
                         delay_sign = 1.0
                     else:
                         delay_sign = -1.0
                     if doppler is True:
-                        tmp_delay = delays[DString[-2] + DString[-1]]
+                        tmp_delay = delays[DString[-2] + DString[-1]] * delay_sign # consider the sign of delay 
                         tmp_doppler = np.gradient(tmp_delay) * self.fsample
                         delayed_eta_ij = timeshift(
                             data=delayed_eta_ij,
-                            shifts=delay_sign * self.fsample * tmp_delay,
+                            shifts=delay_sign * self.fsample * tmp_delay, # consider the sign of delay 
                             order=self.order,
-                        ) * (1.0 - tmp_doppler)
+                        ) * (1.0 + tmp_doppler)
                     else:
                         delayed_eta_ij = timeshift(
                             data=delayed_eta_ij,
