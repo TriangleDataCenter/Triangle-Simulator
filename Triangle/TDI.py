@@ -652,7 +652,8 @@ class TDI:
 
 
 class TDIStringManipulation:
-    replacement_rule = {"1": "2", "2": "3", "3": "1"}
+    # replacement_rule = {"1": "2", "2": "3", "3": "1"}
+    replacement_rule = {"1": "2", "2": "3", "3": "1", "-": "-"} # take both delay and advance operators into account
 
     @classmethod
     def replace_string(cls, s):
