@@ -637,7 +637,7 @@ class TDI:
                         tmp_doppler = np.gradient(tmp_delay) * self.fsample
                         delayed_eta_ij = timeshift(
                             data=delayed_eta_ij,
-                            shifts=delay_sign * self.fsample * tmp_delay, # consider the sign of delay 
+                            shifts=self.fsample * tmp_delay, 
                             order=self.order,
                         ) * (1.0 + tmp_doppler)
                     else:
