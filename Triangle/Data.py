@@ -833,6 +833,113 @@ def timeshift(data, shifts, order=31):
     return mat.dot(data_padded)
 
 
+
+def barycentric_timeshift(data, shifts, order=31):
+    """
+    Barycentric Lagrange interpolation for integer-spaced nodes (step=1).
+    Vectorized for interior points.
+
+    Parameters
+    ----------
+    data : 1D array, shape (M,)
+        Function values at integer sampling grids x = 0, 1, 2, ...
+    shifts : 1D array, shape (M,)
+        indices of shifted points (can be float)
+    order : int
+        Polynomial degree (number of nodes = order+1)
+
+    Returns
+    ----------
+    data_new : 1D array, shape (M,)
+        Shifted values using barycentric lagrange interpolation
+    """
+    data = np.asarray(data, dtype=float)
+    shifts = np.asarray(shifts, dtype=float)
+    M = len(data)
+    if len(shifts) != M:
+        raise ValueError("data and shifts must have the same length")
+    shifted = shifts + np.arange(M)  # convert to absolute shifted positions
+
+    # Precompute barycentric weights
+    w = np.array([(-1)**k * comb(order, k) for k in range(order + 1)], dtype=float)  # (window_size,)
+    window_size = order + 1
+    half = window_size // 2
+
+    # Floating index
+    t = shifted
+    idx = np.floor(t).astype(int)   # left integer index
+    delta = t - idx                 # fractional part in [0, 1)
+
+    # Interior points: window fully inside [0, M-1]
+    left = idx - half  # indices of left bounds
+    right = left + window_size - 1  # indices of right bounds
+    is_internal = (left >= 0) & (right < M)
+
+    y_new = np.empty(M, dtype=float)
+
+    # ---------- Boundary points: few, processed one by one ----------
+    boundary = np.where(~is_internal)[0]
+    # for i in boundary:
+    #     xq = shifts[i]
+    #     if idx[i] < half:
+    #         start = 0
+    #     else:
+    #         start = M - window_size
+    #     x_win = x0 + np.arange(start, start+window_size)
+    #     y_win = y[start:start+window_size]
+    #     # Exact match check
+    #     if np.isclose(xq, x_win).any():
+    #         match = np.argmin(np.abs(xq - x_win))
+    #         y_new[i] = y_win[match]
+    #         continue
+    #     diff = xq - x_win
+    #     terms = w / diff
+    #     y_new[i] = np.sum(terms * y_win) / np.sum(terms)
+    y_new[boundary] = 0.
+
+    # ---------- Interior points: fully vectorized ----------
+    internal = np.where(is_internal)[0]  # indices of internal points within shifts
+    if len(internal) > 0:
+        idx_int = idx[internal]  # integer part of idx
+        delta_int = delta[internal]  # fractional part of idx
+        left_int = idx_int - half  # left bounds of windows
+        # K = len(internal)
+
+        # Build window y matrix (K, window_size), K = len(internal)
+        offsets = np.arange(window_size)[None, :] + left_int[:, None]  # idx of data in window for each evalutation point
+        y_win = data[offsets]  # (K, window_size), data in window for each evaluation point
+
+        # eta = delta + half, denominator = eta - k
+        eta = delta_int + half  # (K,)
+        k_vals = np.arange(window_size)  # (window_size,)
+        denom = eta[:, None] - k_vals  # (K, window_size), the x - x_j term
+
+        eps = 1e-12
+        exact = np.any(np.abs(denom) < eps, axis=1)
+        if np.any(exact):
+            for i_row in np.where(exact)[0]:
+                col = np.argmin(np.abs(denom[i_row]))
+                y_new[internal[i_row]] = y_win[i_row, col]
+            keep = ~exact
+            if np.any(keep):
+                eta_keep = eta[keep]
+                denom_keep = denom[keep]
+                y_win_keep = y_win[keep]
+                inv_denom = 1.0 / denom_keep
+                terms = w * inv_denom
+                num = np.sum(terms * y_win_keep, axis=1)
+                den = np.sum(terms, axis=1)
+                y_new[internal[keep]] = num / den
+        else:
+            inv_denom = 1.0 / denom
+            terms = w * inv_denom  # (K, window_size), w_j / (x - x_j) term
+            num = np.sum(terms * y_win, axis=1)  # (K, window_size) * (K, window_size) -> (K,)
+            den = np.sum(terms, axis=1)  # (K,)
+            y_new[internal] = num / den
+
+    return y_new
+
+
 def store_dict_to_h5(h5parent, dictitem):
     for k, v in dictitem.items():
         if isinstance(v, dict):
