@@ -4,7 +4,6 @@ from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 
 from Triangle.Constants import *
 
-
 class Orbit:
     """
     return dictionaries of functions.
@@ -13,8 +12,8 @@ class Orbit:
     """
 
     def __init__(self, OrbitDir, max_rows=None, tstart=0, dt=DAY, pn_order=2):
-        # read in orbit data
-        # each item is a N * 3 array
+
+        # ---- step 1: read in orbit data (each item is N × 3) ----
         if max_rows is None:
             self.rdata = {key: np.loadtxt(OrbitDir + "/SCP" + key + ".dat") * AU for key in SC_labels}
             self.vdata = {key: np.loadtxt(OrbitDir + "/SCV" + key + ".dat") * AU / DAY for key in SC_labels}
@@ -26,6 +25,15 @@ class Orbit:
         self.N = len(self.rdata[SC_labels[0]])
         self.tdata = np.arange(self.N) * dt - self.tstart
         self.dt = dt
+
+        # ---- step 2: PN-based post-processing (shared with subclasses) ----
+        self._post_process(pn_order)
+
+    # -----------------------------------------------------------------
+    #  Post-processing: LTT, ARM, TCB↔TPS, PPR, Position/Velocity
+    #  Requires: self.rdata, self.vdata, self.tdata, self.dt (set by __init__)
+    # -----------------------------------------------------------------
+    def _post_process(self, pn_order):
 
         LTTdata = {}
         self._LTTfunctions = {}
@@ -169,78 +177,210 @@ class Orbit:
 
     def Velocityfunctions(self):
         return self._Velocityfunctions
-
-
-class EqualArmAnalyticOrbit:
+    
+    
+class HeliocentricEqualArmAnalyticOrbit(Orbit):
     """
-    calculate the equal arm analytic orbit of LISA/Taiji
+    Orbit subclass that internally computes the equal-arm analytic
+    heliocentric constellation model instead of reading orbit files.
 
-    Attributes:
-        L: norminal armlength
-        kap, lam: initial conditions of the orbit
+    All interpolation functions (LTT, Doppler, PPR, DPPR, arm vectors,
+    positions, velocities, TCB/TPS conversions) are built via the same
+    procedure as the parent ``Orbit`` class.
 
-    index of array:
-    length_vector: link, t
-    arm_vector: link, xyz, t
-    center_position: xyz, t
-    position / relative_position: S/C, xyz, t
-    all in SI unit
+    Parameters
+    ----------
+    L : float
+        Nominal arm length [m].  Default: ``L_nominal``.
+    a : float
+        Guiding-centre semi-major axis [m].  Default: ``AU``.
+    kap : float
+        Initial orbital phase [rad].  Default: 0.
+    lam : float
+        Initial constellation orientation [rad].  Default: 0.
+    tstart : float
+        Start-time offset [s].  Default: 0.
+    dt : float
+        Time step [s].  Default: ``DAY``.
+    pn_order : int
+        PN order * 2 for LTT (0, 1, 2).  Default: 2.
+    Tobs : float or None
+        Total duration [s].  If *None*, ``5 * YEAR`` is used.
     """
 
-    def __init__(self, L=L_nominal, a=AU, kap=0, lam=0):
-        self.L = L
-        self.LTT = self.L / C
-        self.a = a
-        self.kap = kap
-        self.lam = lam
-        self.e = L / 2.0 / a / np.sqrt(3.0)
+    def __init__(
+        self,
+        L=L_nominal,
+        a=AU,
+        kap=0.0,
+        lam=0.0,
+        tstart=0.0,
+        dt=DAY,
+        pn_order=2,
+        Tobs=None,
+    ):
+        if Tobs is None:
+            Tobs = 5 * YEAR  # nominal operation time for Taiji
 
-    def position(self, t):
-        A = 2.0 * np.pi / 365.0 / DAY * t + self.kap
-        position_t = []
-        for n in range(0, 3):
-            Bn = n * 2.0 * np.pi / 3.0 + self.lam
-            xn = self.a * np.cos(A) + self.a * self.e * (np.sin(A) * np.cos(A) * np.sin(Bn) - (1.0 + (np.sin(A)) ** 2) * np.cos(Bn))
-            yn = self.a * np.sin(A) + self.a * self.e * (np.sin(A) * np.cos(A) * np.cos(Bn) - (1.0 + (np.cos(A)) ** 2) * np.sin(Bn))
-            zn = -np.sqrt(3.0) * self.a * self.e * np.cos(A - Bn)
-            position_t.append([xn, yn, zn])
-        return np.array(position_t)
+        # ---- step 1: analytic equal-arm orbit data ----
+        self.tstart = tstart
+        self.dt = dt
+        self.N = int(Tobs / dt)
+        self.tdata = np.arange(self.N) * dt - self.tstart
 
-    def center_position(self, t):
-        A = 2.0 * np.pi / 365.0 / DAY * t + self.kap
-        xn = self.a * np.cos(A)
-        yn = self.a * np.sin(A)
-        zn = np.zeros_like(xn)
-        return np.array([xn, yn, zn])
+        e = L / (2.0 * a * np.sqrt(3.0))
+        omega = TWOPI / YEAR  # guiding-centre angular frequency
 
-    def relative_position(self, t):
-        A = 2.0 * np.pi / 365.0 / DAY * t + self.kap
-        position_t = []
-        for n in range(0, 3):
-            Bn = n * 2.0 * np.pi / 3.0 + self.lam
-            xn = self.a * self.e * (np.sin(A) * np.cos(A) * np.sin(Bn) - (1.0 + (np.sin(A)) ** 2) * np.cos(Bn))
-            yn = self.a * self.e * (np.sin(A) * np.cos(A) * np.cos(Bn) - (1.0 + (np.cos(A)) ** 2) * np.sin(Bn))
-            zn = -np.sqrt(3.0) * self.a * self.e * np.cos(A - Bn)
-            position_t.append([xn, yn, zn])
-        return np.array(position_t)
+        self.rdata = {}
+        self.vdata = {}
 
-    def arm_vector(self, t):  # 1, 1s, 2, 2s, 3, 3s
-        p1, p2, p3 = self.position(t)
-        L1 = p2 - p3
-        L2 = p3 - p1
-        L3 = p1 - p2
-        n1 = np.zeros_like(L1)
-        n2 = np.zeros_like(L2)
-        n3 = np.zeros_like(L3)
-        for i in range(len(L1[0])):
-            n1[:, i] = L1[:, i] / np.linalg.norm(L1[:, i])
-            n2[:, i] = L2[:, i] / np.linalg.norm(L2[:, i])
-            n3[:, i] = L3[:, i] / np.linalg.norm(L3[:, i])
-        return np.array([n1, -n1, n2, -n2, n3, -n3])
+        for idx, label in enumerate(SC_labels):
+            n = idx
+            Bn = n * TWOPI / 3.0 + lam
+            A = omega * self.tdata + kap
 
-    def __call__(self, times):
-        Li = np.ones((6, len(times))) * self.L
-        ni = self.arm_vector(times)
-        R0i = self.center_position(times)
-        R0SCi = self.relative_position(times)
-        return times, Li, ni, R0i, R0SCi
+            sinA = np.sin(A)
+            cosA = np.cos(A)
+            sinBn = np.sin(Bn)
+            cosBn = np.cos(Bn)
+
+            # --- positions (SI) ---
+            xn = (
+                a * cosA
+                + a * e * (sinA * cosA * sinBn - (1.0 + sinA**2) * cosBn)
+            )
+            yn = (
+                a * sinA
+                + a * e * (sinA * cosA * cosBn - (1.0 + cosA**2) * sinBn)
+            )
+            zn = -np.sqrt(3.0) * a * e * np.cos(A - Bn)
+            self.rdata[label] = np.column_stack([xn, yn, zn])
+
+            # --- velocities (analytic time derivative) ---
+            vx = omega * (
+                -a * sinA
+                + a * e * (np.cos(2.0 * A) * sinBn - np.sin(2.0 * A) * cosBn)
+            )
+            vy = omega * (
+                a * cosA
+                + a * e * (np.cos(2.0 * A) * cosBn + np.sin(2.0 * A) * sinBn)
+            )
+            vz = omega * (np.sqrt(3.0) * a * e * np.sin(A - Bn))
+            self.vdata[label] = np.column_stack([vx, vy, vz])
+
+        # ---- step 2: PN-based post-processing (inherited from Orbit) ----
+        self._post_process(pn_order)
+        
+        
+class GeocentricEqualArmAnalyticOrbit(Orbit):
+    """
+    Orbit subclass for a geocentric equal-arm analytic constellation
+    (e.g., TianQin-like detectors).
+
+    Three SCs form an equilateral triangle orbiting the Earth in a
+    detector plane whose orientation is given by (phi_det, theta_det).
+    The Earth itself follows a circular Kepler orbit in the ecliptic.
+
+    All post-processing (LTT, ARM, TCB↔TPS, PPR, interpolation) is
+    inherited from ``Orbit._post_process()``.
+
+    Parameters
+    ----------
+    L : float
+        Arm length [m].  Default: √3 × 10⁸ (TianQin).
+    kappa0 : float
+        Initial orbital phase of SC1 in the detector plane [rad].
+        Default: 0.
+    kappa_earth : float
+        Initial ecliptic longitude of Earth at t=0 [rad].  Default: 0.
+    phi_det : float
+        Ecliptic longitude of the detector-plane normal [rad].
+        Default: 2.10205135 (J0806, TianQin).
+    theta_det : float
+        Ecliptic latitude of the detector-plane normal [rad]
+        (= θ_s in TianQinOrbit).  Default: −0.08209992 (J0806, TianQin).
+    tstart : float
+        Start-time offset [s].  Default: 0.
+    dt : float
+        Time step [s].  Default: ``DAY``.
+    pn_order : int
+        PN order for LTT (0, 1, 2).  Default: 2.
+    Tobs : float or None
+        Total duration [s].  If *None*, ``5 * YEAR`` is used.
+    """
+
+    def __init__(
+        self,
+        L=np.sqrt(3.0) * 1e8,
+        kappa0=0.0,
+        kappa_earth=0.0,
+        phi_det=2.102051345707588,       # J0806 ecliptic longitude
+        theta_det=-0.0820999173027218,  # ecliptic latitude (J0806, TianQin)
+        tstart=0.0,
+        dt=DAY,
+        pn_order=2,
+        Tobs=None,
+    ):
+        if Tobs is None:
+            Tobs = 5 * YEAR
+            
+        # Earth mass / gravitational parameter
+        M_EARTH = 5.972e24
+        MU_EARTH = G * M_EARTH  # ≈ 3.986e14 m³/s²
+
+        # ---- step 1: time grid ----
+        self.tstart = tstart
+        self.dt = dt
+        self.N = int(Tobs / dt)
+        self.tdata = np.arange(self.N) * dt - self.tstart
+
+        # ---- step 2: Earth heliocentric orbit (circular, ecliptic) ----
+        omega_e = TWOPI / YEAR
+        alpha_e = omega_e * self.tdata + kappa_earth
+
+        R_e_x = AU * np.cos(alpha_e)
+        R_e_y = AU * np.sin(alpha_e)
+        R_e_z = np.zeros(self.N)
+
+        V_e_x = -AU * omega_e * np.sin(alpha_e)
+        V_e_y = AU * omega_e * np.cos(alpha_e)
+        V_e_z = np.zeros(self.N)
+
+        # ---- step 3: SC orbits around Earth (circular, in detector plane) ----
+        R_orbit = L / np.sqrt(3.0)
+        omega_sc = np.sqrt(MU_EARTH / R_orbit**3)  # 2π·f₀
+
+        cp, sp = np.cos(phi_det), np.sin(phi_det)
+        ct, st = np.cos(theta_det), np.sin(theta_det)
+
+        self.rdata = {}
+        self.vdata = {}
+
+        for idx, label in enumerate(SC_labels):
+            n = idx
+            kappa_n = n * TWOPI / 3.0 + kappa0
+            alpha = omega_sc * self.tdata + kappa_n
+
+            sa, ca = np.sin(alpha), np.cos(alpha)
+
+            # relative position w.r.t. Earth (detector-plane → SSB frame)
+            x_rel = R_orbit * (sp * ca + cp * st * sa)
+            y_rel = R_orbit * (-cp * ca + sp * st * sa)
+            z_rel = R_orbit * (-ct * sa)
+
+            # relative velocity w.r.t. Earth
+            vx_rel = R_orbit * omega_sc * (-sp * sa + cp * st * ca)
+            vy_rel = R_orbit * omega_sc * (cp * sa + sp * st * ca)
+            vz_rel = R_orbit * omega_sc * (-ct * ca)
+
+            # total position / velocity in SSB frame
+            self.rdata[label] = np.column_stack([
+                R_e_x + x_rel, R_e_y + y_rel, R_e_z + z_rel,
+            ])
+            self.vdata[label] = np.column_stack([
+                V_e_x + vx_rel, V_e_y + vy_rel, V_e_z + vz_rel,
+            ])
+
+
+        # ---- step 4: PN post-processing (inherited) ----
+        self._post_process(pn_order)
