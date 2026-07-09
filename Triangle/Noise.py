@@ -786,9 +786,9 @@ class TDIPSDFromPString:
     def TDI_P_ij(self, P_ij_strings, f):
         """
         Args:
-            P_ij_strings is a MosaDict, each item like: [(1., ["12", "21"]), (-1., ["-13"]), ...], repersenting [D_12 D_21 - A_13 ...]
+            P_ij_strings is a Dict, each item like: [(1., ["12", "21"]), (-1., ["-13"]), ...], representing [D_12 D_21 - A_13 ...]
         Returns:
-            P_ij: MosaDict, each item (Nf)
+            P_ij: Dict, each item (Nf)
         """
         # calculate single delay operators
         tmp = -1.0j * TWOPI * f  # -2pif
