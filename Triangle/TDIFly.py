@@ -782,5 +782,265 @@ class TDIFlyGB(TDIFly):
     @staticmethod
     def fdot_upper_bound(f): 
         return 1e-6 * f ** (11./3.)
+
+
+# ============================================================
+# Network waveform generator for Galactic binaries
+#
+#    TDIFlyGBNetwork:  a network version of TDIFlyGB that handles a
+#    list of detectors in a single class.
+#
+#    * Orbit-dependent quantities (arm vectors, delays, positions on
+#      the sparse time grid) are precomputed ONCE per detector at
+#      construction.
+#    * Source-dependent quantities (wave vector, phase evolution,
+#      carrier frequency, inclination factors) are computed ONCE per
+#      call and shared by all detectors -> no duplicated computation
+#      between detectors.
+#    * The orbit-dependent sparse TDI response is still computed per
+#      detector (different orbits), then converted to A/E and filled
+#      onto the common frequency band.
+# ============================================================
+
+class TDIFlyGBNetwork(TDIFlyGB):
+    """Network waveform generator for Galactic binaries.
+
+    Parameters
+    ----------
+    orbits : list of Orbit
+        One orbit object per detector.
+    Pstring_list : list
+        TDI P-strings (same for all detectors), e.g. [X2, Y2, Z2].
+    tcb_times : (Ntime,) array
+        Common TCB time grid (uniformly spaced; identical for all
+        detectors so all share the same `full_freq`).
+    Nsparse, use_gpu, drop_points : see :class:`TDIFly`.
+    """
+
+    def __init__(self, orbits, Pstring_list, tcb_times, Nsparse=512,
+                 use_gpu=False, drop_points=0):
+        self.Ndet = len(orbits)
+
+        # ---- precompute orbit-dependent quantities once per detector ----
+        ref = None
+        self.arm_vector_list = []
+        self.sc_pos_list = []
+        self.dij_list = []
+        self.Ndelay_list = []
+        self.delay_factor_list = []
+        self.delay_list = []
+        self.delayed_dij_list = []
+        self.delayed_send_pos_list = []
+        self.delayed_recv_pos_list = []
+        for orbit in orbits:
+            tmp = TDIFly(orbit, Pstring_list, tcb_times, Nsparse,
+                         use_gpu, drop_points)
+            self.arm_vector_list.append(tmp.arm_vector_dict)
+            self.sc_pos_list.append(tmp.sc_position_vector_dict)
+            self.dij_list.append(tmp.dij_dict)
+            self.Ndelay_list.append(tmp.Ndelay_dict)
+            self.delay_factor_list.append(tmp.delay_factor_dict)
+            self.delay_list.append(tmp.delay_dict)
+            self.delayed_dij_list.append(tmp.delayed_dij_dict)
+            self.delayed_send_pos_list.append(tmp.delayed_send_position_vector_dict)
+            self.delayed_recv_pos_list.append(tmp.delayed_recv_position_vector_dict)
+            ref = tmp
+
+        # ---- copy shared attributes from the reference instance ----
+        for attr in (
+            "Nchannel", "tcb_times", "Ntime", "dt", "Tobs", "Nsparse",
+            "drop_points", "use_gpu", "xp", "COS", "SIN", "EXP", "SINC",
+            "MATMUL", "NX", "SUM", "CONJ", "RE",
+            "sparse_times", "sparse_dt", "sparse_t0", "sparse_tf",
+            "sparse_times2", "sparse_times3", "full_freq", "Nfrequency",
+        ):
+            setattr(self, attr, getattr(ref, attr))
+
+    # ------------------------------------------------------------------
+    # Source quantities shared by ALL detectors (computed once per call)
+    # ------------------------------------------------------------------
+    def _source_terms(self, parameters):
+        xp = self.xp
+        A = xp.atleast_1d(parameters["A"])
+        f0 = xp.atleast_1d(parameters["f0"])
+        fdot0 = xp.atleast_1d(parameters["fdot0"])
+        fddot0 = self.get_fddot(f=f0, fdot=fdot0)
+        phase0 = xp.atleast_1d(parameters["phase0"])
+        inclination = xp.atleast_1d(parameters["inclination"])
+        longitude = xp.atleast_1d(parameters["longitude"])
+        latitude = xp.atleast_1d(parameters["latitude"])
+        psi = xp.atleast_1d(parameters["psi"])
+        Nevents = len(A)
+
+        # wave vectors in the SSB frame
+        k = -xp.array([self.COS(latitude) * self.COS(longitude),
+                       self.COS(latitude) * self.SIN(longitude),
+                       self.SIN(latitude)]).T                     # (Nevents, 3)
+        u = xp.array([self.SIN(longitude), -self.COS(longitude),
+                      xp.zeros(Nevents)]).T                       # (Nevents, 3)
+        v = xp.array([-self.SIN(latitude) * self.COS(longitude),
+                      -self.SIN(latitude) * self.SIN(longitude),
+                      self.COS(latitude)]).T                      # (Nevents, 3)
+
+        # inclination / polarisation factors
+        mu = self.COS(inclination)
+        Aplus = ((1. + mu ** 2) / 2.)[:, self.NX]                 # (Nevents, 1)
+        Across = -1.j * mu[:, self.NX]                            # (Nevents, 1)
+        cos2psi = self.COS(2. * psi)[:, self.NX]
+        sin2psi = self.SIN(2. * psi)[:, self.NX]
+
+        # phase evolution on the sparse grid
+        phi_GW = (TWOPI * xp.outer(f0, self.sparse_times)
+                  + PI * xp.outer(fdot0, self.sparse_times2)
+                  + PI / 3. * xp.outer(fddot0, self.sparse_times3)
+                  + phase0[:, self.NX])                           # (Nevents, Nsparse+1)
+        dphi_GW = (TWOPI * xp.outer(fdot0, self.sparse_times)
+                   + PI * xp.outer(fddot0, self.sparse_times2)
+                   + TWOPI * f0[:, self.NX])
+        ddphi_GW = TWOPI * (xp.outer(fddot0, self.sparse_times)
+                            + fdot0[:, self.NX])
+        dddphi_GW = TWOPI * fddot0[:, self.NX]
+
+        # heterodyne carrier (shared by all detectors)
+        carrier_freq_idx = (dphi_GW[:, self.Nsparse // 2] / TWOPI
+                            * self.Tobs).astype(self.xp.int32)
+        carrier_phase = (TWOPI / self.Tobs
+                         * carrier_freq_idx[:, self.NX] * self.sparse_times)
+        self.start_idx = (carrier_freq_idx - self.Nsparse / 2).astype(self.xp.int32)
+
+        return dict(
+            Nevents=Nevents, A=A, k=k, u=u, v=v,
+            Aplus=Aplus, Across=Across, cos2psi=cos2psi, sin2psi=sin2psi,
+            phi_GW=phi_GW, dphi_GW=dphi_GW, ddphi_GW=ddphi_GW,
+            dddphi_GW=dddphi_GW, carrier_phase=carrier_phase,
+        )
+
+    # ------------------------------------------------------------------
+    # Per-detector sparse TDI response (orbit-dependent part)
+    # ------------------------------------------------------------------
+    def _detector_response(self, idet, terms):
+        xp = self.xp
+        arm_vector_dict = self.arm_vector_list[idet]
+        delay_dict = self.delay_list[idet]
+        delayed_dij_dict = self.delayed_dij_list[idet]
+        delayed_send_pos = self.delayed_send_pos_list[idet]
+        delayed_recv_pos = self.delayed_recv_pos_list[idet]
+        Ndelay_dict = self.Ndelay_list[idet]
+        delay_factor_dict = self.delay_factor_list[idet]
+
+        Nevents = terms["Nevents"]
+        k, u, v = terms["k"], terms["u"], terms["v"]
+        Aplus, Across = terms["Aplus"], terms["Across"]
+        cos2psi, sin2psi = terms["cos2psi"], terms["sin2psi"]
+        phi_GW = terms["phi_GW"]
+        dphi_GW = terms["dphi_GW"]
+        ddphi_GW = terms["ddphi_GW"]
+        dddphi_GW = terms["dddphi_GW"]
+
+        # arm projections
+        un12 = self.MATMUL(u, arm_vector_dict["12"].T)   # (Nevents, Nsparse)
+        un23 = self.MATMUL(u, arm_vector_dict["23"].T)
+        un31 = self.MATMUL(u, arm_vector_dict["31"].T)
+        vn12 = self.MATMUL(v, arm_vector_dict["12"].T)
+        vn23 = self.MATMUL(v, arm_vector_dict["23"].T)
+        vn31 = self.MATMUL(v, arm_vector_dict["31"].T)
+
+        # antenna pattern functions in the SSB frame
+        xiplus12 = un12 ** 2 - vn12 ** 2
+        xiplus23 = un23 ** 2 - vn23 ** 2
+        xiplus31 = un31 ** 2 - vn31 ** 2
+        xicross12 = 2. * un12 * vn12
+        xicross23 = 2. * un23 * vn23
+        xicross31 = 2. * un31 * vn31
+
+        # antenna pattern functions in the source frame
+        zetaplus12 = cos2psi * xiplus12 + sin2psi * xicross12
+        zetaplus23 = cos2psi * xiplus23 + sin2psi * xicross23
+        zetaplus31 = cos2psi * xiplus31 + sin2psi * xicross31
+        zetacross12 = -sin2psi * xiplus12 + cos2psi * xicross12
+        zetacross23 = -sin2psi * xiplus23 + cos2psi * xicross23
+        zetacross31 = -sin2psi * xiplus31 + cos2psi * xicross31
+        zetaplus = {"12": zetaplus12, "23": zetaplus23, "31": zetaplus31,
+                    "21": zetaplus12, "32": zetaplus23, "13": zetaplus31}
+        zetacross = {"12": zetacross12, "23": zetacross23, "31": zetacross31,
+                     "21": zetacross12, "32": zetacross23, "13": zetacross31}
+
+        kn = {}
+        for key in MOSA_labels:
+            kn[key] = self.MATMUL(k, arm_vector_dict[key].T)   # (Nevents, Nsparse)
+
+        tdi_responses = []
+        for ichannel in range(self.Nchannel):
+            sparse_response = xp.zeros((Nevents, self.Nsparse + 1),
+                                       dtype=xp.complex128)
+            for mosa in MOSA_labels:
+                if Ndelay_dict[ichannel][mosa] == 0:
+                    continue
+                Denominator_term = 0.5 / (1. - kn[mosa])
+                Pattern_term = Aplus * zetaplus[mosa] + Across * zetacross[mosa]
+                Phase_delay_term = xp.zeros((Nevents, self.Nsparse + 1),
+                                            dtype=xp.complex128)
+                for Idelay in range(Ndelay_dict[ichannel][mosa]):
+                    d_em = (delay_dict[ichannel][mosa][Idelay]
+                            + delayed_dij_dict[ichannel][mosa][Idelay]
+                            + self.MATMUL(k, delayed_send_pos[ichannel][mosa][Idelay].T) / C)
+                    d_re = (delay_dict[ichannel][mosa][Idelay]
+                            + self.MATMUL(k, delayed_recv_pos[ichannel][mosa][Idelay].T) / C)
+                    dphi_em = (-dphi_GW * d_em + 0.5 * ddphi_GW * d_em ** 2
+                               - 1. / 6. * dddphi_GW * d_em ** 3)
+                    dphi_re = (-dphi_GW * d_re + 0.5 * ddphi_GW * d_re ** 2
+                               - 1. / 6. * dddphi_GW * d_re ** 3)
+                    Phase_delay_term += (delay_factor_dict[ichannel][mosa][Idelay]
+                                         * (self.EXP(1.j * dphi_em)
+                                            - self.EXP(1.j * dphi_re)))
+                sparse_response += Denominator_term * Pattern_term * Phase_delay_term
+
+            # amplitude / phase of the sparse response
+            sparse_response_amp = xp.abs(sparse_response)
+            sparse_response_phase = xp.unwrap(xp.angle(sparse_response))
+
+            # heterodyned frequency-domain response (same as TDIFlyGB)
+            slow_amp = terms["A"][:, self.NX] * sparse_response_amp
+            slow_phase = sparse_response_phase + phi_GW
+            heterodyne_phase = slow_phase - terms["carrier_phase"]
+            tmp = self.EXP(1.j * heterodyne_phase) * slow_amp
+            tdi_f = (xp.fft.fftshift(xp.fft.fft(tmp[:, :-1], axis=-1),
+                                     axes=-1) * self.sparse_dt)
+            tdi_responses.append(tdi_f)
+
+        return xp.array(tdi_responses)      # (3, Nevents, Nsparse)
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+    def __call__(self, parameters, domain="frequency"):
+        """Sparse TDI responses of all detectors (XYZ channels).
+
+        Returns a list of (Nchannel, Nevents, Nsparse) arrays, one per
+        detector.  `self.start_idx` is set on call.
+        """
+        if domain != "frequency":
+            raise NotImplementedError(
+                "TDIFlyGBNetwork currently supports domain='frequency' only.")
+        terms = self._source_terms(parameters)
+        return [self._detector_response(idet, terms)
+                for idet in range(self.Ndet)]
+
+    def response_on_band(self, parameters, StartBound, EndBound):
+        """Stacked joint A/E network response on the frequency band
+        [StartBound, EndBound] of the common `full_freq` grid.
+
+        Returns (2*Ndet, Nevents, Nfreq_band) complex array with the
+        ordering [det0_A, det0_E, det1_A, det1_E, ...].
+        """
+        responses = self.__call__(parameters, domain="frequency")
+        parts = []
+        for idet in range(self.Ndet):
+            ae = self.XYZtoAE(responses[idet])          # (2, Nevents, Nsparse)
+            filled = self.fill_fftseries(
+                data=ae, start_idx=self.start_idx,
+                StartBound=StartBound, EndBound=EndBound)   # (2, Nevents, Nfreq)
+            parts.append(filled)
+        return self.xp.concatenate(parts, axis=0)       # (2*Ndet, Nevents, Nfreq)
         
     
