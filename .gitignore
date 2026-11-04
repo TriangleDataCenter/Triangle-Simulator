@@ -621,13 +621,7 @@ healthchecksdb
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 
-# Keep local experiments ignored, while versioning the Tutorial 4 desktop GUI.
+# Local experiments (Test/) are not versioned.
 Test/*
-!Test/gui_app.py
-!Test/simulation_backend.py
-!Test/run_gui.sh
-!Test/README_GUI.md
-!Test/test_simulation_backend.py
-!Test/test_gui_workflow.py
 
 # End of https://www.gitignore.io/api/osx,python,pycharm,windows,visualstudio,visualstudiocode
